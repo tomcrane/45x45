@@ -1,0 +1,11 @@
+# Cache files
+category_cache.json
+test_cache*.json
+__pycache__/
+*.pyc
+
+# Generated games (keep only the original)
+game_*.html
+
+# Claude Code
+.claude/

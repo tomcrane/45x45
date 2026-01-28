@@ -1,0 +1,614 @@
+
+<html>
+    <!-- 2025 by Thomas Colthurst -->
+    <!-- Original at https://thomaswc.com/2025.html -->
+    <!-- Released under a Creative Commons Share Alike with Attribution License -->
+    <!-- See https://creativecommons.org/licenses/by-sa/4.0/ -->
+    <title>2025</title>
+    <style>
+        body {
+  background-color: white; /* Or #fff or #ffffff */
+}
+
+.bigbut {
+width:100%; height:100%; display:block;
+}
+
+.shake {
+  animation: shake 0.5s;
+  animation-iteration-count: 1;
+}
+
+.numCirc {
+    border-radius: 70%;
+    background: white; /* #fff; */
+    border: 2px solid red; /* #666; */
+    color: red; /* #666; */
+    text-align: center;
+}
+
+.red {
+  color: red;
+}
+
+.floating {
+    position: fixed;
+    z-index: 999;
+    background-color: lightblue;
+}
+
+#fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+@keyframes shake {
+  0% { transform: translateX(1px) rotate(0deg); }
+  10% { transform: translateX(-1px) rotate(-1deg); }
+  20% { transform: translateX(-3px) rotate(1deg); }
+  30% { transform: translateX(3px) rotate(0deg); }
+  40% { transform: translateX(1px) rotate(1deg); }
+  50% { transform: translateX(-1px) rotate(-1deg); }
+  60% { transform: translateX(-3px) rotate(0deg); }
+  70% { transform: translateX(3px) rotate(-1deg); }
+  80% { transform: translateX(-1px) rotate(1deg); }
+  90% { transform: translateX(1px) rotate(0deg); }
+  100% { transform: translateX(1px) rotate(-1deg); }
+}
+    </style>
+    <body>
+        <canvas id="fireworks"></canvas>
+<div class="floating">
+   Make 45 groups of 45!  (By combining two at a time.) &nbsp;
+   Score: <span id="score">0</span> &nbsp; Mistakes: <span id="mistakes">0</span> &nbsp;
+    <button type="button" id="deselect" style="" disabled onclick="deselect()">Deselect</button>
+</div>
+<div style="padding-top: 16px; position: absolute" id="board"></div>
+
+    </body>
+        <script>
+        // Bugs: 
+        // 1) Unicode not rendering properly inside buttons on Chrome.
+        // Feature requests:
+        // 1) Don't penalize already guessed.
+        
+        // Globals
+        const M = 45;  // Board size
+            
+        var score = 0;
+        var mistakes = 0;
+        
+        var selected = 0;  // The currently selected button, if any.
+        
+        var wordlist = [];  // Actually, a list of (word, category) pairs
+    
+
+        // The categories.
+        
+        var cats = {};
+            
+            // #1.  Censored:  Chromium (Google Project)
+            cats["Elements"] = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminium", "Silicon", "Phosphorous", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium"];
+            
+            // #2
+            cats["African Countries"] = ["Nigeria", "Ethiopia", "Egypt", "DR Congo", "Tanzania", "South Africa", "Kenya", "Sudan", "Uganda", "Algeria", "Morocco", "Angola", "Ghana", "Mozambique", "Madagascar", "Ivory Coast", "Cameroon", "Niger", "Mali", "Burkina Faso", "Malawi", "Zambia", "Chad", "Somalia", "Senegal", "Zimbabwe", "Guinea", "Benin", "Rwanda", "Burundi", "Tunisia", "South Sudan", "Togo", "Sierra Leone", "Libya", "Republic of the Congo", "Liberia", "Central African Republic", "Mauritania", "Eritrea", "Namibia", "Gambia", "Gabon", "Botswana", "Lesotho"];
+            
+            // #3.  Censored:  Julia (Programming Language)
+            cats["Muppets"] = ["Fozzie Bear", "Kermit the Frog", "Miss Piggy", "Beaker", "Gonzo", "Bunsen Honeydew", "Camilla the Chicken", "Link Hogthrob", "Rowlf the Dog", "Statler", "Waldorf", "Animal", "Sam Eagle", "Scooter", "Sweetums", "Abby Cadabby", "Dr. Julius Strangepork", "Elmo", "Pepe the King Prawn", "Rizzo the Rat", "Dr. Teeth", "Floyd Pepper", "Janice", "Zoot", "Lips", "The Swedish Chef", "Walter", "Bobo the Bear", "Uncle Deadly", "Beauregard", "Lew Zealand", "Robin the Frog", "Crazy Harry", "Big Bird", "Oscar the Grouch", "Bert", "Ernie", "Cookie Monster", "Grover", "Count von Count", "Prairie Dawn", "Zoe", "Rosita", "Guy Smiley", "Telly Monster"];
+
+            // #4.  Censored: Lincoln (Car Brand), Phoenix (D&D Monster), Boston (Rock Band)
+            cats["US State Capitols"] = ["Montgomery", "Juneau", "Little Rock", "Sacramento", "Denver", "Hartford", "Dover", "Tallahassee", "Atlanta", "Honolulu", "Boise", "Springfield", "Indianapolis", "Des Moines", "Topeka", "Frankfort", "Baton Rouge", "Augusta", "Annapolis", "Lansing", "St. Paul", "Jackson", "Jefferson City", "Helena", "Carson City", "Concord", "Trenton", "Santa Fe", "Albany", "Raleigh", "Bismarck", "Columbus", "Oklahoma City", "Salem", "Harrisburg", "Providence", "Columbia", "Pierre", "Nashville", "Austin", "Salt Lake City", "Montpelier", "Richmond", "Olympia", "Charleston", "Madison", "Cheyenne"];
+            
+            // #5
+            cats["Prepositions"] = ["About", "Above", "Across", "After", "Against", "Among", "Around", "Before", "Between", "Except", "For", "Along", "Amid", "As", "At", "Behind", "Below", "Beneath", "But", "By", "Despite", "During", "From", "In", "Inside", "Into", "Near", "Of", "Off", "On", "Onto", "Over", "Since", "With", "Within", "Without", "Unto", "Up", "Upon", "Under", "Until", "Toward", "To", "Than", "Through"];
+
+            // #6
+            cats["Types of Numbers"] = ["Natural", "Whole", "Rational", "Real", "Irrational", "Imaginary", "Complex", "P-adic", "Decimal", "Binary", "Positive", "Negative", "Even", "Odd", "Prime", "Composite", "Triangular", "Square", "Fibonacci", "Perfect", "Algebraic", "Transcendental", "Transfinite", "Ordinal", "Surreal", "Computable", "Constructible", "Hypercomplex", "Nonstandard", "Concrete", "Abstract", "Denominate", "Abundant", "Bell", "Carmichael", "Catalan", "Deficient", "Euler", "Factorial", "Figurate", "Happy", "Hyperperfect", "Lucky", "Lucas", "Motzkin", "Padovan", "Partition", "Practical", "Pseudoprime", "Semiprime", "Superperfect", "Ulam"];
+
+             // #7.  Censored:  Drake (Bird).
+             cats["Memes"] = ["Distracted boyfriend", "Change my mind", "Is this a pigeon?", "Unsure Fry", "This is fine", "Kermit sips Lipton", "World's most interesting man", "Batman slapping Robin", "Expanding Brain", "Two buttons", "One does not simply", "Disaster girl", "Woman yelling at cat", "Gru's plan", "I am once again asking you for your support", "Tuxedo Winnie the Pooh", "Leonardo Decaprio Cheers", "Marked Safe From", "Bad Luck Brian", "They're the same picture", "All The Things", "Four Panel Anakin Padme", "Grumpy Cat", "Winter is Coming", "That Would Be Great", "Clown Applying Makeup", "Picard Facepalm", "Philosoraptor", "Matrix Morpheus", "Hard to Swallow Pills", "Laughing Men in Suits", "Too Damn High", "Am I The Only One Around Here", "Spiderman pointing at Spiderman", "I Should Buy a Boat Cat", "Sparta Leonidas", "See Nobody Cares", "Shut Up and Take My Money", "Everybody loses their minds", "Out of Touch Skinner", "Success Kid", "Overly attached girlfriend", "You know I'm something of a scientist myself", "How do you do fellow kids", "Condescending Willy Wonka"];
+             
+             // #8.  Censored: Wolverine (MCU Character), Goat (Cheese), Jaguar (Car)
+             cats["Mammals"] = ["Tenrec", "Shrew", "Mole", "Dog", "Fox", "Wolf", "Jackal", "Bear", "Skunk", "Badger", "Otter", "Weasel", "Raccoon", "Coati", "Seal", "Walrus", "Sea Lion", "Civet", "Cat", "Lion", "Tiger", "Leopard", "Lynx", "Cougar", "Cheetah", "Linsang", "Hyena", "Mongoose", "Camel", "Pig", "Warthog", "Peccary", "Hippopotamus", "Whale", "Narwhal", "Beluga", "Dolphin", "Porpoise", "Chevrotain", "Giraffe", "Okapi", "Moose", "Caribou", "Deer", "Buffalo", "Antelope", "Gazelle", "Sheep", "Bat", "Armadillo", "Mice", "Lemur", "Possum", "Wombat", "Kangaroo", "Hedgehog", "Rabbit", "Horse", "Zebra", "Rhinoceros", "Anteater", "Sloth", "Monkey", "Elephant", "Squirrel", "Mouse", "Beaver", "Gopher", "Rat", "Porcupine", "Aardvark", "Manatee"];
+
+              // #9.  Censored:  Triangle (Type of Number)
+              cats["Musical Instruments"] = ["Guitar", "Violin", "Drums", "Bass", "Oboe", "Piano", "Synthesizer", "Cello", "Harp", "Viola", "Banjo", "Mandolin", "Ukulele", "Lute", "Sitar", "Lyre", "Flute", "Clarinet", "Saxophone", "Bassoon", "Recorder", "Piccolo", "Trumpet", "Trombone", "Tuba", "French horn", "Bugle", "Organ", "Harpsichord", "Tambourine", "Xylophone", "Accordion", "Bagpipes", "Cymbal", "Didgeridoo", "Fiddle", "Glockenspiel", "Gong", "Harmonica", "Ocarina", "Zither", "Whistle", "Theremin", "Vibraphone", "Timpani"];
+              
+              // #10
+              cats["Dog Breeds"] = ["French bulldog", "Labrador retriever", "Golden retriever", "German shepherd", "Poodle", "Dachshund", "Beagle", "Rottweiler", "Bulldog", "German shorthaired pointer", "Yorkshire terrier", "Australian shepherd", "Cavalier King Charles Spaniel", "Cane Corso", "Pembroke Welsh Corgi", "Doberman Pinscher", "Boxer", "Miniature schnauzer", "Bernese Mountain Dog", "Shih Tzu", "Great Dane", "Pomeranian", "Boston Terrier", "Miniature American Shepherd", "Havanese", "Siberian Husky", "Chihuahua", "English Springer Spaniel", "Shetland Sheepdog", "Border Collie", "Brittany", "Cocker Spaniel", "Belgian Malinois", "Basset Hound", "Vizsla", "English Cocker Spaniel", "Maltese", "Pug", "Collie", "Mastiff", "West Highland White Terrier", "Shiba Inu", "Rhodesian Ridgeback", "Papillon", "Portuguese Water Dog", "Dalmatian", "Scottish Terrier", "Bloodhound", "Saint Bernard", "Irish Setter"];
+              
+              // #11 Censored: Skeleton (D&D Monster)
+              cats["Olympic Sports"] = ["Swimming", "Gymnastics", "Pentathlon", "Diving", "Wrestling", "Rowing", "Boxing", "Soccer", "Judo", "Archery", "Tennis", "Volleyball", "Weightlifting", "Skateboarding", "Triathlon", "Badminton", "Fencing", "Sailing", "Surfing", "Equestrian", "Water polo", "Field hockey", "Basketball", "Bicycling", "Karate", "Ice hockey", "Lacrosse", "Baseball", "Biathlon", "Table tennis", "Figure skating", "Golf", "Bobsleigh", "Shooting", "Cricket", "Curling", "Luge", "Canoeing", "Football", "Rugby sevens", "Softball", "Taekwondo", "Squash", "Sport climbing", "Skiing"];
+              
+              // #12.  Censored:  Dragon (tree), Skeleton (Olympic Sport), Zombie (Drink)
+              cats["D&D Monsters"] = ["Beholder", "Devil", "Displacer beast", "Gelatinous cube", "Hell hound", "Lich", "Mimic", "Mind flayer", "Mummy", "Owlbear", "Rust monster", "Grue", "Demon", "Tarrasque", "Bugbear", "Carrion crawler", "Chimera", "Cockatrice", "Air Elemental", "Fire Elemental", "Water Elemental", "Earth Elemental", "Djinn", "Ghost", "Ghoul", "Hill Giant", "Gnoll", "Goblin", "Golem", "Harpy", "Hobgoblin", "Hydra", "Imp", "Werewolf", "Manticore", "Medusa", "Minotaur", "Ogre", "Ochre jelly", "Troll", "Umber hulk", "Vampire", "Wight", "Wraith", "Bulette"];
+              
+              // #13.  Censored: Bard (Google Product), Pippin (Musical)
+              cats["Tolkien Character"] = ["Aragorn", "Gandalf", "Frodo", "Sauron", "Galadriel", "Gollum", "Arwen", "Legolas", "Bilbo", "Elrond", "Peregrin", "Eowyn", "Gimli", "Samwise", "Saruman", "Boromir", "Tom Bombadil", "Merry", "Theoden", "Faramir", "Eomer", "Treebeard", "Grima", "Denethor", "Radagast", "Glorfindel", "Celeborn", "Thengel", "Goldberry", "Shelob", "Gaffer Gamgee", "Lobelia Sackville-Baggins", "Thorin Oakenshield", "Smaug", "Beorn", "Balin", "Ori", "Dwalin", "Fili", "Kili", "Oin", "Gloin", "Dori", "Nori", "Bifur", "Bofur", "Bombur"];
+              
+              // #14.  Censored:  Shel Silverstein, Dr. Seuss (both also Poets)
+              cats["Cartoonists"] = ["Scott Adams", "Robert Crumb", "Matt Groening", "Gary Larson", "Charles Schulz", "Alison Bechdel", "Jim Davis", "Garry Trudeau", "Walt Kelly", "Bill Watterson", "Marjane Satrapi", "Herge", "Mike Judge", "Lynn Johnston", "Charles Addams", "Chuck Jones", "Bil Keane", "George Herriman", "Bob Kane", "Jack Kirby", "Joseph Barbera", "Walt Disney", "John Byrne", "Jay Ward", "Art Spiegelman", "Scott McCloud", "Harvey Pekar", "Edward Gorey", "Berkeley Breathed", "Will Eisner", "Rube Goldberg", "Larry Gonick", "Osamu Tezuka", "Quino", "Sergio Aragones", "Randall Munroe", "Roz Chast", "Phil Foglio", "Zach Weinersmith", "Ryan North", "Mike Krahulik", "Rich Burlew", "Jeph Jacques", "Kate Beaton", "Allie Brosh" ];
+              
+              // #15
+              cats["US VPs"] = ["John Adams", "Thomas Jefferson", "Aaron Burr", "George Clinton", "Elbridge Gerry", "Daniel Tompkins", "John Calhoun", "Martin Van Buren", "Richard Mentor Johnson", "John Tyler", "George Dallas", "Millard Fillmore", "William King", "John Breckinridge", "Hannibal Hamlin", "Andrew Johnson", "Schuyler Colfax", "Henry Wilson", "William Wheeler", "Chester Arthur", "Thomas Hendricks", "Levi Morton", "Adlai Stevenson", "Garret Hobart", "Theodore Roosevelt", "Charles Fairbanks", "James Sherman", "Thomas Marshall", "Calvin Coolidge", "Charles Dawes", "Charles Curtis", "John Nance Garner", "Henry Wallace", "Harry Truman", "Alben Barkley", "Richard Nixon", "Lyndon Johnson", "Hubert Humphrey", "Spiro Agnew", "Gerald Ford", "Nelson Rockefeller", "Walter Mondale", "George H. W. Bush", "Dan Quayle", "Al Gore", "Dick Cheney", "Joe Biden", "Mike Pence", "Kamala Harris", "J. D. Vance"];
+              
+              // #16
+              cats["SNL Cast Members"] = ["Dana Carvey", "Bill Hader", "Eddie Murphy", "Chevy Chase", "Kevin Nealon", "Norm MacDonald", "Tina Fey", "Amy Poehler", "Mikey Day", "Kenan Thompson", "John Belushi", "Mike Myers", "Michael Che", "Kate McKinnon", "Pete Davidson", "Aidy Bryant", "Colin Jost", "Cecily Strong", "Heidi Gardner", "Dan Aykroyd", "Kyle Mooney", "Will Ferrell", "Gilda Radner", "Sarah Sherman", "Beck Bennett", "Bowen Yang", "Chris Farley", "Kristen Wiig", "Bill Murray", "Jane Curtin", "Chloe Fineman", "Maya Rudolph", "Phil Hartman", "Jimmy Fallon", "Seth Meyers", "Vanessa Bayer", "Andy Samberg", "Fred Armisen", "Adam Sandler", "Rachel Dratch", "David Spade", "James Austin Johnson", "Alex Moffat", "Jason Sudeikis", "Jon Lovitz", "Jan Hooks", "Dennis Miller", "Chris Parnell", "Molly Shannon", "Taran Killam", "Jane Curtin", "Will Forte", "Tracy Morgan"];
+              
+              // #17
+              cats["World Wonders"] = ["Statue of Liberty", "Taj Mahal", "Eiffel Tower", "Golden Gate Bridge", "Colosseum", "Great Wall of China", "Great Pyramid of Giza", "Angkor Wat", "Machu Picchu", "Leaning Tower of Pisa", "Mount Rushmore", "Empire State Building", "Grand Canyon", "Sydney Opera House", "The Acropolis", "Christ the Redeemer", "Hollywood Sign", "Niagara Falls", "La Sagrada Familia", "Stonehenge", "Big Ben", "Lincoln Memorial", "Mount Fuji", "London Eye", "St. Peter's Basilica", "Notre Dame", "Tokyo Tower", "St. Basil's Cathedral", "Arc de Triomphe", "The Great Sphinx", "Mount Kilimanjaro", "The Forbidden City", "Mount Everest", "Sears Tower", "Brooklyn Bridge", "Trevi Fountain", "Burj Al Arab Hotel", "Louvre Museum", "Times Square", "The White House", "Buckingham Palace", "Versailles", "Neuschwanstein Castle", "Pompeii", "Edinburgh Castle", "Matterhorn", "CN Tower"];
+              
+              // #18.  Censored:  Agriculture (Invention), Public Health (Medical Specialty), Finance (Google Product)
+              cats["College Majors"] = ["Business", "Nursing", "Psychology", "Communications", "Biology", "Marketing", "Accounting", "Criminal Justice", "English", "Computer Science", "Political Science", "Education", "Economics", "Physical Fitness", "History", "Graphic Design", "Sociology", "Mechanical Engineering", "Electrical Engineering", "Fine Arts", "Liberal Arts", "Journalism", "Mathematics", "Mass Media", "Music", "Civil Engineering", "Hospitality", "Chemistry", "Architecture", "Philosophy", "Drama", "Film Studies", "Anthropology", "Chemical Engineering", "Environmental Science", "Theology", "International Relations", "Physics", "Nutrition Science", "Geology", "Linguistics", "Aerospace Engineering", "Pre-Law", "Biomedical Engineering", "Cognitive Science"];
+              
+              // #19.  Censored:  Genesis (Band & Bible Book), Jaguar (Mammal), Tesla (Company), Lincoln (State Capital), Toyota (Car Brand), Ram (Mammal), Lotus (Flower)
+              cats["Car Brands"] = ["Ford", "Honda", "BMW", "Subaru", "Hyundai", "Audi", "Jeep", "Porsche", "Dodge", "Ferrari", "Lamborghini", "Maserati", "Bentley", "Chrysler", "Cadillac", "Mazda", "Nissan", "Bugatti", "Buick", "Lexus", "Rolls-Royce", "Acura", "Aston Martin", "Chevrolet", "Kia", "Mercedes-Benz", "Volkswagen", "Volvo", "McLaren", "Mitsubishi", "GMC", "Infiniti", "Peugeot", "Pontiac", "Saab", "Suzuki", "Citroen", "Fiat", "Mini", "Peterbilt", "Saturn", "General Motors", "Stellantis", "Land Rover", "Opel"];
+              
+              // #20.  Censored:  Toyota, Tesla (Car Brands)
+              cats["Large Companies"] = ["Apple", "Nvidia", "Microsoft", "Saudi Aramco", "Amazon", "Alphabet", "Meta", "PetroChina", "Broadcom", "TSMC", "Berkshire Hathaway", "Eli Lilly", "Walmart", "JPMorgan Chase", "Visa", "Oracle", "Mastercard", "ExxonMobil", "UnitedHealth", "Costco", "Netflix", "Home Depot", "Procter & Gamble", "Johnson & Johnson", "Bank of America", "SAP", "Salesforce", "ASML", "AbbVie", "Chevron", "Novo Nordisk", "Coca-Cola", "Wells Fargo", "T-Mobile", "Cisco", "Accenture", "Merck", "ServiceNow", "American Express", "Blackstone", "Thermo Fisher", "Morgan Stanley", "Intuitive Surgical", "AstraZeneca", "Linde", "IBM", "Abbott Labs", "GE", "Pepsi"];
+              
+              // #21.  Censored: Nest (Google Thing), Cloud (Google Thing)
+              cats["Collective Nouns"] = ["Flock", "Herd", "Pack", "Pod", "Pride", "Committee", "Colony", "Band", "School", "Congregation", "Army", "Swarm", "Cluster", "Tribe", "Family", "Group", "Troop", "Drove", "Hive", "Flight", "Flutter", "Rabble", "Litter", "Brood", "Murder", "Bunch", "Convocation", "Gang", "Mob", "Flamboyance", "Horde", "Aerie", "Array", "Team", "Parade", "Court", "Loveliness", "Exaltation", "Conspiracy", "Consortium", "Parliament", "Roost", "Prickle", "Bevy", "Brace", "Maelstrom", "Surfeit", "Chattering"];
+              
+              // #22  Censored:  "C", "R" (Keyboard Characters).  "Julia" (Muppet)  "Ruby" (Gemstone), Swift (Bird)
+              cats["Programming Languages"] = ["C++", "Pascal", "Ada", "Fortran", "Python", "Java", "JavaScript", "Lisp", "Go", "C#", "SQL", "PHP", "Perl", "Basic", "MATLAB", "Objective-C", "Rust", "Scratch", "Logo", "COBOL", "Prolog", "Scheme", "Haskell", "TypeScript", "AWK", "Tcl", "Smalltalk", "Algol", "APL", "Bash", "Eiffel", "Forth", "ML", "Modula-2", "OCaml", "Kotlin", "Dart", "Erlang", "Stan", "Lua", "Clojure",
+                  "HyperTalk", "PostScript", "Simula", "Delphi"
+              ];
+              
+              // #23.  Censored: Goat (Mammal).
+              cats["Cheeses"] = ["Cheddar", "Brie", "Camembert", "Feta", "Gouda", "American", "Mozzarella", "Asiago", "Cream", "Cottage", "Edam", "Emmental", "Monterey Jack", "Colby", "Cotija", "Basket", "Blue", "Burrata", "Fontina", "Gruyere", "Halloumi", "Maasdam", "Manchego", "Mascarpone", "Parmesan", "Swiss", "Gorgonzola", "Havarti", "Jarlsberg", "Limburger", "Muenster", "Neufchatel", "Paneer", "Provolone", "Ricotta", "Romano", "String", "Roquefort", "Epoisses", "Stilton", "Oaxaca", "Bundz", "Canastra", "Wensleydale", "Bocconcini"];
+              
+              // #24
+              cats["Pastas"] = ["Fusilli", "Rigatoni", "Penne", "Bucatini", "Linguine", "Farfalle", "Fettuccine", "Orecchiette", "Spaghetti", "Macaroni", "Pappardelle", "Gnocchi", "Orzo", "Ditalini", "Ziti", "Lasagna", "Tagliatelle", "Angel hair", "Capellini", "Cavatappi", "Gemelli", "Paccheri", "Ravioli", "Cannelloni", "Manicotti", "Rocchetti", "Radiatore", "Rotelle", "Rotini", "Tortellini", "Vermicelli", "Pastina", "Campanelle", "Riccioli", "Lumache", "Strozzapreti", "Calamarata", "Casarecce", "Croxetti", "Fregola", "Busiate", "Pici", "Mafalde", "Conchiglioni", "Cascatelli"];
+              
+              // #25.  Censored:  Falcon (Bird), Wolverine (Mammal). 
+              cats["MCU Character"] = ["Iron Man", "Spider-Man", "Hulk", "Captain America", "Black Widow", "Hawkeye", "Thor", "Nick Fury", "Scarlet Witch", "Vision", "Antman", "Wasp", "Black Panther", "Dr. Strange", "Star-Lord", "Captain Marvel", "Shang-Chi", "Moon Knight", "Ms. Marvel", "Deadpool", "Blade", "America Chavez", "Drax", "Gamora", "Groot", "Heimdall", "Korg", "X-23", "Gambit", "Quicksilver", "Beast", "Daredevil", "Odin", "Colossus", "Human Torch", "Valkyrie", "She-Hulk", "Adam Warlock", "Ironheart", "Professor X", "Rocket Raccoon", "Pepper Potts", "Phil Coulson", "Wong", "Mr. Fantastic", "The Thing", "Human Torch", "Invisible Woman"];
+              
+              // #26.  Censored:  Genesis (Bible, Car Brand).  Nirvana (Fallacy), Eagles (Bird), Chicago (Musical)
+              cats["Rock Bands"] = ["The Beatles", "The Rolling Stones", "The Who", "Led Zeppelin", "Pink Floyd", "AC/DC", "Foo Fighters", "Metallica", "Queen", "Guns N' Roses", "Aerosmith", "U2", "REM", "Black Sabbath", "Pearl Jam", "Fleetwood Mac", "The Doors", "Bon Jovi", "Iron Maiden", "Van Halen", "Ramones", "Kiss", "ZZ Top", "Deep Purple", "Creedence Clearwater Revival", "Motley Crue", "Journey", "Radiohead", "Lynyrd Skynyrd", "Def Leppard", "Rush", "The Beach Boys", "The Allman Brothers", "Grateful Dead", "The Police", "The Clash", "Soundgarden", "Talking Heads", "The Cure", "Steely Dan", "Steve Miller Band", "The Jimi Hendrix Experience", "Coldplay", "ABBA", "Maroon 5"];
+              
+              // #27.  Censored: Falcon (MCU Charachter), Cardinal (Number), Loon (Google Thing), Swift (Programming Language), Finch (Tom Hanks Movie)
+              cats["Birds"] = ["Robin", "Dove", "Mockingbird", "Goldfinch", "Woodpecker", "Sparrow", "Chickadee", "Hummingbird", "Blue Jay", "Titmouse", "Wren", "Magpie", "Duck", "Plover", "Goose", "Swan", "Quail", "Turkey", "Grouse", "Chicken", "Flamingo", "Pigeon", "Roadrunner", "Cuckoo", "Hawk", "Crane", "Snipe", "Puffin", "Penguin", "Gull", "Tern", "Albatross", "Stork", "Gannet", "Booby", "Cormorant", "Condor", "Vulture", "Pelican", "Heron", "Ibis", "Egret", "Osprey", "Eagle", "Owl", "Kingfisher"];
+              
+              // #28.  Censored: Cloud Atlas (Novel), Bonfire of the Vanities (novel), Greyhound (Dog breed), "extremely loud and incredibly close" (novel), "hologram for a king" (novel)
+              cats["Tom Hanks Movies"] = ["Splash", "Bachelor Party", "The Man With One Red Shoe", "Volunteers", "The Money Pit", "Nothing in Common", "Every Time We Say Goodbye", "Dragnet", "Big", "Punchline", "The 'Burbs", "Turner & Hooch", "Joe Versus the Volcano", "A League of their Own", "Sleepless in Seattle", "Philadelphia", "Forrest Gump", "Apollo 13", "Toy Story", "That Thing You Do!", "Saving Private Ryan", "You've Got Mail", "The Green Mile", "Cast Away", "Road to Perdition", "Catch Me If You Can", "The Terminal", "The Polar Express", "The Da Vinci Code", "Charlie Wilson's War", "Angels & Demons", "Larry Crowne", "Captain Phillips", "Saving Mr. Banks", "Bridge of Spies", "Sully", "Inferno", "The Circle", "The Post", "A Beautiful Day in the Neighborhood", "News of the World", "Elvis", "A Man Called Otto", "Asteroid City", "Pinocchio", "Here"];
+              
+              // #29
+              cats["Famous Novels"] = ["The Great Gatsby", "To Kill a Mockingbird", "The Catcher in the Rye", "Ulysses", "Mrs. Dalloway", "Jane Eyre", "Catch-22", "Lord of the Flies", "A Passage to India", "Adventures of Huckleberry Finn", "Wuthering Heights", "Brave New World", "Lolita", "Anna Karenina", "Don Quixote", "The Grapes of Wrath", "On the Road", "Little Women", "David Copperfield", "The Call of the Wild", "Vanity Fair", "One Hundred Years of Solitude", "The Scarlet Letter", "Middlemarch", "Robinson Crusoe", "Invisible Man", "The Sun Also Rises", "Gulliver's Travels", "Beloved", "Madame Bovary", "The Trial", "The Age of Innocence", "Midnight's Children", "Dracula", "Alice's Adventures in Wonderland", "Treasure Island", "Pride and Prejudice", "Moby Dick", "The Pilgrim's Progress", "A Christmas Carol", "A Tale of Two Cities", "Great Expectations", "The Hobbit", "Frankenstein", "Oliver Twist", "Uncle Tom's Cabin", "Crime and Punishment"];
+              
+              // #30.  Censored:  Dragon (D&D Monster). 
+              cats["Trees"] = ["Oak", "Willow", "Spruce", "Beech", "Coconut", "Olive", "Magnolia", "Walnut", "Almond", "Pistachio", "Sequoia", "Sycamore", "Fig", "Cacao", "Redwood", "Fir", "Ash", "Birch", "Clove", "Camphor", "Pine", "Maple", "Aspen", "Cherry", "Chestnut", "Cottonwood", "Elm", "Hawthorn", "Hemlock", "Hickory", "Sassafras", "Hazelnut", "Baobab", "Ginkgo", "Neem", "Rubber", "Papaya", "Pecan", "Banyan", "Brazil nut", "Palm", "Larch", "Cinnamon", "Curry", "Mango"];
+              
+              // #31.  Censored:  Nirvana (Band)
+              cats["Fallacies"] = ["Base rate", "Non sequitur", "Masked-man", "Continuum", "Double counting", "Motte-and-bailey", "Ecological", "False dilemma", "Homunculus", "Lump of labour", "McNamara", "Mind projection", "Moralistic", "Slippery slope", "Begging the question", "No true Scotsman", "Cherry picking", "Post hoc ergo propter hoc", "Gambler's", "Garden of forking paths", "Sunk cost", "Appeal to the stone", "Red herring", "Ad hominem", "Logic chopping", "Ipse dixit", "Chronological snobbery", "Genetic", "Relative privation", "Naturalistic", "Tu quoque", "Texas sharpshooter", "Straw man", "Argumentum ad populum", "Inductive", "Circular reasoning", "Special pleading", "Prosecutor's", "Proof by assertion", "Prevalent proof", "Moving the goalposts", "Ludic", "Intentionality", "If-by-whiskey", "Historical", "False equivalence", "Etymological"];
+              
+              // #32.  Censored: Nest (Collective Noun)
+              cats["Google Products"] = ["Search", "Android", "Calendar", "Chrome", "Drive", "Gmail", "Earth", "Maps", "Meet", "Translate", "Classroom", "Alerts", "Assistant", "Gemini", "Books", "Flights", "Images", "Shopping", "Lens", "News", "Patents", "Scholar", "YouTube", "Ads", "AdMob", "Ad Manager", "Blogger", "FeedBurner", "Chat", "Fonts", "Groups", "Voice", "Charts", "Docs", "Sheets", "Slides", "Drawings", "Forms", "Sites", "Keep", "Analytics", "Street View", "Santa Tracker", "Ngram Viewer", "TensorFlow", "Trends", "Workspace", "App Engine"];
+              
+              // #33.  Censored: Ruby (Programming Language)
+              cats["Gemstones"] = ["Emerald", "Sapphire", "Diamond", "Amethyst", "Opal", "Aquamarine", "Topaz", "Citrine", "Pearl", "Peridot", "Tanzanite", "Garnet", "Alexandrite", "Tourmaline", "Morganite", "Agate", "Moonstone", "Turquoise", "Lapis lazuli", "Pink Sapphire", "Red Coral", "Benitoite", "Beryl", "Jade", "Jasper", "Spinel", "Tsavorite", "Smoky Quartz", "Corundum", "Carnelian", "Fluorite", "Black Onyx", "Rose Quartz", "Malachite", "Tiger's eye", "Apatite", "Chrysocolla", "Amazonite", "Chrysoprase", "Hematite", "Howlite", "Iolite", "Kyanite", "Lepidolite", "Moldavite", "Jadeite"];
+              
+              // #34.  Censored:  Genesis (Band)
+              cats["Books of the Bible"] = ["Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "Samuel", "Kings", "Chronicles", "Ezra", "Nehemiah", "Tobit", "Judith", "Esther", "Maccabees", "Job", "Psalms", "Proverbs", "Ecclesiastes", "Song of Songs", "Wisdom", "Sirach", "Isaiah", "Jeremiah", "Lamentations", "Baruch", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "Thessalonians", "Timothy", "Titus", "Philemon", "Hebrews", "James", "Peter", "John", "Jude", "Revelation"];
+              
+              // #35.  Censored:  Blackbird (name of bird)
+              cats["Beatles Songs"] = ["Love Me Do", "Back in the USSR", "Across the Universe", "Yellow Submarine", "Nowhere Man", "And I Love Her", "Dear Prudence", "With a Little Help From My Friends", "Sgt. Pepper's Lonely Hearts Club Band", "I've Just Seen a Face", "Taxman", "Helter Skelter", "Got to Get You Into My Life", "All My Loving", "Drive My Car", "Get Back", "Paperback Writer", "Eight Days a Week", "Penny Lane", "You've Got to Hide Your Love Away", "We Can Work It Out", "Can't Buy Me Love", "Here Comes the Sun", "Happiness is a Warm Gun", "Eleanor Rigby", "All You Need Is Love", "Please Please Me", "Lucy in the Sky With Diamonds", "Tomorrow Never Knows", "Ticket to Ride", "I Saw Her Standing There", "Help!", "Revolution", "Norwegian Wood", "A Hard Day's Night", "While My Guitar Gently Weeps", "Come Together", "Let It Be", "Hey Jude", "Something", "In My Life", "Yesterday", "Strawberry Fields Forever", "I Want to Hold Your Hand", "A Day in the Life"];
+              
+              // #36.  Censored:  Penciliin (Invention), Bamboo (Almost a Tree), Zombie (D&D Monster)
+              cats["Cocktails"] = ["Old Fashioned", "Negroni", "Daiquiri", "Martini", "Margarita", "Whiskey Sour", "Manhattan", "Aperol Spritz", "Mojito", "Bloody Mary", "Gimlet", "Moscow Mule", "Dark 'n' Stormy", "Corpse Reviver", "Clover Club", "Boulevardier", "Mai Tai", "Sazerac", "French 75", "Paloma", "Pisco Sour", "Vieux Carre", "Americano", "Amaretto Sour", "Gin Fizz", "Bramble", "Brandy Crusta", "Bellini", "Pina Colada", "Sidecar", "Aviation", "Irish Coffee", "Last Word", "Tom Collins", "Caiprinha", "Hanky Panky", "Cosmopolitan", "El Diablo", "White Lady", "Gin Gin Mule", "Long Island Iced Tea", "Jungle Bird", "Painkiller", "Fitzgerald", "Old Cuban", "Bee's Knees", "Paper Plane", "Naked & Famous", "Screwdriver", "Kamikaze", "Mint julep", "Mimosa", "Black Russian", "Cuba libre", "Tequila sunrise", "Sex on the beach", "Vesper"];
+              
+              // #37.  Censored: Lotus (Car Brand)
+              cats["Flowers"] = ["Buttercup", "Camellia", "Marigold", "Bluebell", "Violet", "Chrysanthemum", "Edelweiss", "Primrose", "Orchid", "Dahlia", "Rose", "Foxglove", "Hibiscus", "Lavender", "Bird of paradise", "Jasmine", "Lilac", "Delphinium", "Pansy", "Bougainvillea", "Peony", "Daisy", "Azalea", "Periwinkle", "Trillium", "Allium", "Petunia", "Rhododendron", "Phlox", "Nasturtium", "Sunflower", "Baby's breath", "Aster", "Heather", "Tansy", "Carnation", "Tiger lily", "Geranium", "Amaryllis", "Lily", "Yarrow", "Calla lily", "Iris", "Plumeria", "Dandelion", "Daffodil", "Tulip", "Hyacinth"]
+              
+              // #38
+              cats["Fabrics"] = ["Brocade", "Burlap", "Cambric", "Cheesecloth", "Chenille", "Chiffon", "Chintz", "Corduroy", "Crepe", "Damask", "Denim", "Felt", "Fishnet", "Flannel", "Gabardine", "Gauze", "Georgette", "Gingham", "Gore-tex", "Grosgrain", "Hemp", "Herringbone", "Jersey", "Lace", "Lame", "Leather", "Linen", "Loden", "Mackinaw", "Moleskin", "Muslin", "Oilskin", "Organza", "Pleather", "Polyester", "Poplin", "Rayon", "Sailcloth", "Seersucker", "Serge", "Silk", "Spandex", "Taffeta", "Terrycloth", "Tulle", "Tweed", "Twill", "Velour", "Velvet", "Velveteen"];
+              
+              // #39  Censored: "V" (Keyboard Character)
+              cats["Scifi TV Shows"] = ["Quantum Leap", "Babylon 5", "Futurama", "Counterpart", "Orphan Black", "The Twilight Zone", "Firefly", "Fringe", "The Expanse", "Black Mirror", "Stranger Things", "Westworld", "Lost", "Star Trek", "The X-Files", "Doctor Who", "Battlestar Galactica", "Max Headroom", "Farscape", "Rick and Morty", "The 100", "The Prisoner", "Red Dwarf", "Mystery Science Theater 3000", "The Six Million Dollar Man", "Better Off Ted", "Dollhouse", "3rd Rock from the Sun", "Knight Rider", "Lost in Space", "Buck Rogers in the 25th Century", "Stargate SG-1", "The Jetsons", "Mork & Mindy", "Alf", "Foundation", "The Last of Us", "Man in the High Castle", "The Mandalorian", "The Outer Limits", "Torchwood", "Blake's 7", "Sense8", "Eureka", "Space: 1999"];
+              
+              // #40  Censored: "C", "D", "R", "S" (Programming Language), "V" (Scifi show)
+              cats["Keyboard Characters"] = ["A", "B", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "T", "U", "W", "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "`", "-", "=", "ESC", "TAB", "SHIFT", "CTRL", "ALT", "[", "]", "\\", ";", "'", ",", ".", "/", "ENTER"];
+              
+              // #41
+              cats["Weather Words"] = ["Breezy", "Calm", "Cloudy", "Cold", "Drizzle", "Fair", "Fog", "Freezing", "Flurry", "Foggy", "Frost", "Gale", "Gusty", "Hazy", "Humid", "Hail", "Hot", "Hurricane", "Icy", "Lightning", "Muggy", "Misty", "Moist", "Monsoon", "Nor'easter", "Overcast", "Rainy", "Rainbow", "Sleet", "Snowy", "Slush", "Stormy", "Smog", "Squall", "Thunderstorm", "Tornado", "Typhoon", "Windy", "Warm", "Whiteout", "Sunny", "Dry", "Clear", "Blizzard", "Heatwave", "Downpour", "Cool", "Chilly"];
+              
+              // #42
+              cats["Inventions"] = ["Light bulb", "Electricity", "World Wide Web", "Internal combustion engine", "Steam engine", "Compass", "Printing press", "Gunpowder", "Television", "Telephone", "Airplane", "Parachute", "Microwave oven", "Radio", "The Wheel", "The computer", "Bone tools", "Harpoons", "Bow-and-arrow", "Sewing needle", "Shoes", "Mortar and pestle", "Rope", "Ceramics", "Sliced bread", "Fermentation", "Plumbing", "Public sanitation", "Crossbow", "Currency", "Lightning rod", "Catapult", "Paper", "Double-entry bookkeeping", "Toothbrush", "Telescope", "Cotton gin", "Food canning", "Artificial fertilizer", "Pasteurization", "Stainless steel", "Radiocarbon dating", "Global Positioning System", "Cellular phone", "Search engine", "Bitcoin", "mRNA vaccines"];
+              
+              // #43
+              // cats["45"] = [ "vyf-en-veertig", "Ø®Ù…Ø³Ø© ÙˆØ£Ø±Ø¨Ø¹ÙˆÙ†", "à¦ªà¦à¦¯à¦¼à¦¤à¦¾à¦²à§à¦²à¦¿à¦¶", "quaranta-cinc", "å››åäº”", "ÄtyÅ™icet pÄ›t", "femogfyrre", "vijfenveertig", "kvardek kvin", "apatnapu't lima", "neljÃ¤kymmentÃ¤viisi", "quarante-cinq", "fÃ¼nfundvierzig", "ÏƒÎ±ÏÎ¬Î½Ï„Î± Ï€Î­Î½Ï„Îµ", "××¨×‘×¢×™× ×•×—×ž×©", "à¤ªà¥ˆà¤‚à¤¤à¤¾à¤²à¥€à¤¸", "negyvenÃ¶t", "fjÃ¶rutÃ­u og fimm", "empat puluh lima", "daichead a cÃºig", "quarantacinque", "å››åäº”", "ë§ˆí”ë‹¤ì„¯", "quadraginta quinque", "Äetrdesmit pieci", "keturiasdeÅ¡imt penki", "empat puluh lima", "Ä§amsa u erbgÄ§in", "fÃ¸rtifem", "Ú†Ù‡Ù„ Ùˆ Ù¾Ù†Ø¬", "czterdzieÅ›ci piÄ™Ä‡", "quarenta e cinco", "patruzeci È™i cinci", "ÑÐ¾Ñ€Ð¾Ðº Ð¿ÑÑ‚ÑŒ", "dÃ  fhichead 's a cÃ²ig", "Å¡tyridsaÅ¥pÃ¤Å¥", "petinÅ¡tirideset", "cuarenta y cinco", "arobaini na tano", "fyrtiofem", "à¸ªà¸µà¹ˆà¸ªà¸´à¸šà¸«à¹‰à¸²", "kÄ±rk beÅŸ", "ÑÐ¾Ñ€Ð¾Ðº Ð¿'ÑÑ‚ÑŒ", "bá»‘n mÆ°Æ¡i lÄƒm", "pedwar deg pump" ];
+              
+              // #43 (Replacement).  Censored: Les Miserables (Novel), Chicago (Rock Band)
+              cats["Musicals"] = ["Hamilton", "Hadestown", "The Lion King", "Wicked", "Fiddler on the Roof", "The Book of Mormon", "The Sound of Music", "The Phantom of the Opera", "Annie", "Grease", "Hairspray", "Into The Woods", "Little Shop of Horrors", "Mary Poppins", "My Fair Lady", "Cats", "Aladdin", "Mamma Mia", "Jersey Boys", "Beauty and the Beast", "Miss Saigon", "Kinky Boots", "The Producers", "Rent", "Dear Evan Hansen", "Cabaret", "Spider-Man: Turn Off the Dark", "Starlight Express", "Spamalot", "Jesus Christ Superstar", "In the Heights", "West Side Story", "Avenue Q", "Music Man", "Guys and Dolls", "Six", "Moulin Rouge", "Mean Girls", "Oklahoma!", "Sweeney Todd", "Man of La Mancha", "Oliver!", "Chess", "South Pacific", "The King and I"];
+              
+              // #44.  Censored: Public Health (College Major)
+              // cats["Medical Specialties"] = ["Surgery", "Internal medicine", "Pediatrics", "Emergency medicine", "Anesthesiology", "Neurology", "Family medicine", "Obstetrics", "Gynaecology", "Psychiatry", "Pathology", "Ophthalmology", "Immunology", "Dermatology", "Urology", "Cardiology", "Radiology", "Orthopedics", "Gastroenterology", "Oncology", "Rheumatology", "Nephrology", "Hematology", "Sleep medicine", "Pulmonology", "Endocrinology", "Forensic pathology", "Geriatrics", "Podiatry", "Infectious diseases", "Medical genetics", "Otolaryngology", "Plastic surgery", "Sports medicine", "Thoracic Surgery", "Medical Toxicology", "Nuclear medicine", "Preventive medicine", "Physical medicine", "Trauma Surgery", "Cardiothoracic Surgery", "Vascular Surgery", "Neonatology", "Pediatric Intensivist", "Neurosurgery"];
+              
+              // #45
+              cats["Legal Doctrines"] = ["Abatement ab initio", "Abstention", "Act of state", "Attractive nuisance", "Aggregate effects", "Assignment of income", "Blue pencil", "Born secret", "Caveat emptor", "De minimis", "Cash equivalence", "Privity", "Res judicata", "Eggshell skull", "Erie", "Estoppel", "Ex turpi causa non oritur actio", "Exhaustion of remedies", "Fair use", "First-sale", "Forum non conveniens", "Ignorantia juris non excusat", "Major questions", "Last clear chance", "Ker-Frisbie", "Internal affairs", "Chances", "Colourability", "Equivalents", "Exoneration of Liens", "Foreign Equivalents", "Indivisibility", "Inherency", "International Exhaustion", "Discovery", "Dangerous proximity", "Correlative rights", "Laches", "Merger", "Necessity", "Repair and reconstruction", "Tenure", "Stare decisis", "Res Ipsa Loquitur", "Comparative Negligence", "Unconscionability", "Ancillary Powers", "Pleasure", "Territorial Nexus", "Contra Proferentem", "Consideration"];
+              
+              // Replacement for #44.
+              cats["Poets"] = ["Robert Frost", "E. E. Cummings", "T. S. Eliot", "Dante", "Homer", "Maya Angelou", "Emily Dickinson", "Walt Whitman", "Edgar Allan Poe", "William Shakespeare", "Sylvia Plath", "Pablo Neruda", "Langston Hughes", "William Blake", "William Wordsworth", "John Keats", "William Butler Yeats", "Elizabeth Barrett Browning", "Rudyard Kipling", "Oscar Wilde", "Henry Longfellow", "John Milton", "Sappho", "Lord Byron", "Percy Shelly", "Alfred Tennyson", "Ralph Waldo Emerson", "W. H. Auden", "Robert Burns", "Allen Ginsburg", "Ogden Nash", "Phillip Larkin", "Khalil Gibran", "Rainer Maria Rilke", "Dorothy Parker", "Chaucer", "Virgil", "Edmund Spenser", "John Donne", "Alexander Pope", "Samuel Coleridge", "Robert Browning", "Wallace Stevens", "John Dryden", "Ezra Pound", "Thomas Hardy", "John Ashbery"];
+       
+            // Functions
+            
+            function deselect() {
+              if (selected != 0) {
+                selected.style = "";
+                selected = 0;
+                document.getElementById("deselect").disabled = true;
+              }
+            }
+            
+            function stringToLightColor(str) {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+              }
+
+              const h = Math.abs(hash) % 360;
+              const s = 70;
+              const l = 80 + (Math.abs(hash) % 10); 
+
+              const lDev = l / 100;
+              const a = (s * Math.min(lDev, 1 - lDev)) / 100;
+  
+              const f = (n) => {
+                const k = (n + h / 30) % 12;
+                const color = lDev - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, "0");
+              };
+
+              return `#${f(0)}${f(8)}${f(4)}`;
+            }
+            
+            function getRandomHexColor() {
+              return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+            
+            function finishCategory(b) {
+              b.innerHTML  =  '<b>' + b.category + '</b>';
+              b.disabled = true;
+              b.style.background= stringToLightColor(b.category);
+            }
+            
+            function checkCategories() {
+              const wordDict = new Map();
+              // Check that each category has 45 entries.
+              for (const [key, value] of Object.entries(cats)) {
+                if (value.length < 45) {
+                  alert(`Entry for ${key} has length ${value.length}`);
+                }
+                for (let i = 0; i < 45; i++) {
+                  wordlist.push([value[i], key]);
+                  if (wordDict.has(value[i])) {
+                      alert(`Duplicate word ${value[i]}`);
+                  }
+                  else {
+                      wordDict.set(value[i], true);
+                  }
+                }
+              }
+            }
+            
+            function shuffleArray(array) {
+              for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+              }
+            }
+            
+            function saveState() {
+                localStorage.clear();
+                
+                localStorage.setItem('score', score + '');
+                localStorage.setItem('mistakes', mistakes + '');
+                
+                var t = document.getElementById('the_table');
+                for (let i = 0; i < t.rows.length; i++) {
+                  let row = t.rows[i];
+                  for (let j = 0; j < row.cells.length; j++) {
+                    let cell = row.cells[j];
+                    let button = cell.firstChild;
+                    localStorage.setItem(`${i}_${j}_category`, button.category);
+                    localStorage.setItem(`${i}_${j}_cluster`, JSON.stringify(button.cluster));
+                    localStorage.setItem(`${i}_${j}_innerHTML`, button.innerHTML);
+                    localStorage.setItem(`${i}_${j}_title`, button.title);
+                  }
+                }
+                
+            }
+            
+            function putWordsInBoard() {
+              shuffleArray(wordlist);
+              var currentWordIndex = 0;
+              var table = document.getElementById("the_table");
+              for (let i = 0, row; row = table.rows[i]; i++) {
+                for (let j = 0, col; col = row.cells[j]; j++) {
+                  var button = col.firstElementChild;
+                  // button.pos = currentWordIndex;
+                  button.textContent = wordlist[currentWordIndex][0];
+                  button.category = wordlist[currentWordIndex][1];
+                  button.cluster = [button.textContent];
+                  currentWordIndex += 1;
+                }
+              }
+            }
+            
+            function startFireworks() {
+              const canvas = document.getElementById('fireworks');
+              const ctx = canvas.getContext('2d');
+              let w, h;
+              let particles = [];
+              let fireworks = [];
+
+              function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+              }
+              window.addEventListener('resize', resize);
+              resize();
+
+              class Firework {
+                constructor() {
+                    this.x = Math.random() * w;
+                    this.y = h;
+                    this.tx = Math.random() * w;
+                    this.ty = Math.random() * (h / 2);
+                    this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                    this.speed = 2 + Math.random() * 2;
+                    this.angle = Math.atan2(this.ty - this.y, this.tx - this.x);
+                    this.vx = Math.cos(this.angle) * this.speed;
+                    this.vy = Math.sin(this.angle) * this.speed;
+                    this.exploded = false;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.vy < 0 && this.y < this.ty) {
+                        this.explode();
+                    } else if (this.vy > 0 && this.y > this.ty) { // Should technically not happen with simple upward movement
+                         this.explode();
+                    }
+                }
+
+                explode() {
+                    this.exploded = true;
+                    for (let i = 0; i < 50; i++) {
+                        particles.push(new Particle(this.x, this.y, this.color));
+                    }
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                }
+              }
+
+              class Particle {
+                constructor(x, y, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.color = color;
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 3;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                    this.alpha = 1;
+                    this.decay = Math.random() * 0.015 + 0.005;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += 0.05; // gravity
+                    this.alpha -= this.decay;
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.alpha;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.restore();
+                }
+              }
+
+              function loop() {
+                // Clear with a trail effect
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; 
+                ctx.fillRect(0, 0, w, h);
+                ctx.globalCompositeOperation = 'lighter';
+
+                // Launch new firework randomly
+                if (Math.random() < 0.05) {
+                    fireworks.push(new Firework());
+                }
+
+                // Update and draw fireworks
+                for (let i = fireworks.length - 1; i >= 0; i--) {
+                    fireworks[i].update();
+                    fireworks[i].draw();
+                    if (fireworks[i].exploded) {
+                        fireworks.splice(i, 1);
+                    }
+                }
+
+                // Update and draw particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                    particles[i].draw();
+                    if (particles[i].alpha <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+
+                requestAnimationFrame(loop);
+              }
+
+              loop();
+            }
+            
+            function setUpBoard() {
+              // Just sets up the dom elements; does not put words in them.
+              var b = document.getElementById("board");   
+              const table = document.createElement('table');
+              table.id = 'the_table';
+              for (let i = 0; i < M; i++) {
+                const tr = document.createElement('tr');
+                tr.classList.add('.row');
+                for (let j = 0; j < M; j++) {
+                   const td = document.createElement('td');
+                   td.class = "bigbut";
+                   const button = document.createElement('button');
+                   button.class = "bigbut"
+                   button.onclick = function() {
+                       if (selected == button) {
+                         deselect();
+                         return;
+                       }
+                       button.style = "filter: invert(100%)";
+                       
+                       if (selected == 0) {
+                           selected = button;
+                           document.getElementById("deselect").disabled = false;
+                           return;
+                       }
+                       
+                       document.getElementById("deselect").disabled = true;
+
+                       if (button.category == selected.category) {
+                         
+                         firstbut = button;
+                         secondbut = selected;
+                         
+                         // Deselect
+                         selected.style = "";
+                         button.style = "";
+                         selected = 0;
+                         score = score + 1;
+                         
+                         // Merge
+                         firstbut.cluster = firstbut.cluster.concat(secondbut.cluster);
+                         // console.log(firstbut.cluster);
+                         if (firstbut.cluster.length == 2) {
+                           firstbut.innerHTML = '<b>' + firstbut.cluster.join('; ') + '</b>';
+                         } else {
+                           firstbut.innerHTML = '<b>' + firstbut.cluster.slice(0, 2).join(', ') + ', ... <span class="red">[' + firstbut.cluster.length + ']</span></b>';
+                           firstbut.title = firstbut.cluster.join('\n');
+                         }
+                         if (firstbut.cluster.length == 45) {
+                             finishCategory(firstbut);
+                         }
+                         
+                         document.getElementById("score").textContent = score;
+                         // Remove the button for the eliminated word.
+                         secondbut.title = '';
+                         // if (currentWordIndex < wordlist.length) {
+                         //  secondbut.textContent = wordlist[currentWordIndex][0];
+                         //  secondbut.category = wordlist[currentWordIndex][1];
+                         // secondbut.cluster = [secondbut.textContent];
+                         //  currentWordIndex += 1;
+                         // } else {
+                             secondbut.textContent = '';
+                             secondbut.disabled = true;
+                             
+                             // Remove not just the button but the entire <td>.
+                             secondbut.parentElement.remove();
+                        // }
+                         
+                       } else {
+                         mistakes = mistakes + 1;
+                         document.getElementById("mistakes").textContent = mistakes;
+                         // Shake it
+                         button.classList.add('shake');
+                         selected.classList.add('shake');
+                         
+                         button.addEventListener('animationend', () => {
+                           button.classList.remove('shake');
+                           button.style = "";
+                         }, { once: true });
+  
+                         old_selected = selected;
+                         old_selected.addEventListener('animationend', () => {
+                           old_selected.classList.remove('shake');
+                           old_selected.style = "";
+                         }, { once: true });
+  
+                         selected = 0;
+                       }
+                       saveState();
+                       if (score == 1980) {
+                           window.alert("You win!!");
+                           startFireworks();
+                       }
+                   };
+                   td.appendChild(button);
+                   tr.appendChild(td);
+                }
+                table.appendChild(tr);
+              }
+              
+              document.getElementById("board").appendChild(table);
+            }
+            
+            function loadState() {
+                s = localStorage.getItem('score');
+                if (s == null) {
+                    putWordsInBoard();
+                    return;
+                }
+                score = Number(s);
+                document.getElementById("score").textContent = score;
+                
+                s = localStorage.getItem('mistakes');
+                if (s == null) {
+                    putWordsInBoard();
+                    return;
+                }
+                mistakes = Number(s);
+                document.getElementById("mistakes").textContent = mistakes;
+                
+                var currentWordIndex = 0;
+                var table = document.getElementById("the_table");
+                var cells_to_remove = [];
+                for (let i = 0, row; row = table.rows[i]; i++) {
+                  for (let j = 0, col; col = row.cells[j]; j++) {
+                    var button = col.firstElementChild;
+                    // button.pos = currentWordIndex;
+                    button.category = localStorage.getItem(`${i}_${j}_category`);
+                    button.cluster = JSON.parse(localStorage.getItem(`${i}_${j}_cluster`));
+                    if (Array.isArray(button.cluster) && button.cluster.length == 45) {
+                        finishCategory(button);
+                    }
+                    button.innerHTML = localStorage.getItem(`${i}_${j}_innerHTML`);
+                    button.title = localStorage.getItem(`${i}_${j}_title`);
+                    currentWordIndex += 1;
+                    if (button.innerHTML == '') {
+                        // No word here, remove the whole <td>
+                        cells_to_remove.push(col);
+                    }
+                  }
+                }
+                for (let i = 0; i < cells_to_remove.length; i++) {
+                    cells_to_remove[i].remove();
+                }
+            }
+            
+            checkCategories();
+            setUpBoard();
+            loadState();
+        </script>
+
+</html>
