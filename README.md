@@ -52,12 +52,27 @@ python generate_game.py
 # Specify output filename
 python generate_game.py -o my_game.html
 
+# Generate a reproducible game with a specific seed
+python generate_game.py --seed 12345 -o my_game.html
+
 # Show detailed progress
 python generate_game.py -v
+
+# Expand the category cache (finds 50 new categories, doesn't generate a game)
+python generate_game.py --expand-cache 50
 
 # Use a different cache file
 python generate_game.py -c my_cache.json
 ```
+
+### Reproducibility
+
+Each generated game records its random seed in an HTML comment:
+```html
+<!-- Generated with seed: 12345 -->
+```
+
+Use `--seed` with the same value to regenerate the exact same game.
 
 ### How It Works
 
@@ -71,9 +86,11 @@ python generate_game.py -c my_cache.json
 4. **Member Selection**:
    - Filters out entries that are just the category name (e.g., "Board game" in "Board games")
    - Spreads selection across the alphabet (not just A, B, C...)
-   - Fetches 200 members and samples 45 distributed across all letters
-5. **Diversity**: Ensures variety by limiting similar categories
-6. **Generation**: Creates a standalone HTML file with the selected categories
+   - Fetches up to 300 members and samples 45 distributed across all letters
+5. **Duplicate Prevention**: Each word appears in exactly one category - if a word exists in multiple Wikipedia categories, it's only included in the first one selected
+6. **Diversity**: Ensures variety by rejecting categories with overlapping keywords (e.g., won't include both "Mammals of Africa" and "Mammals of Asia" in the same game)
+7. **Caching**: Discovered categories are cached locally for faster subsequent runs
+8. **Generation**: Creates a standalone HTML file with the selected categories
 
 ### Example Categories
 

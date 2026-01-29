@@ -410,7 +410,7 @@ class HTMLGenerator:
     def __init__(self, template_file: str = '2025.html'):
         self.template_file = template_file
 
-    def generate(self, categories: dict[str, list[str]], output_file: str):
+    def generate(self, categories: dict[str, list[str]], output_file: str, seed: int = None):
         """Generate game HTML with the given categories."""
 
         # Read template
@@ -429,6 +429,11 @@ class HTMLGenerator:
 
         # Update title to indicate this is a generated version
         html = html.replace('<title>2025</title>', '<title>2025 - Wikipedia Edition</title>')
+
+        # Add seed comment after the opening <html> tag
+        if seed is not None:
+            seed_comment = f'\n    <!-- Generated with seed: {seed} -->'
+            html = html.replace('<html>', f'<html>{seed_comment}', 1)
 
         # Write output
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -483,23 +488,23 @@ class DiversityChecker:
             return max(keywords, key=len)
         return ""
 
-    def is_diverse_enough(self, name: str, max_keyword_overlap: int = 2) -> bool:
+    def is_diverse_enough(self, name: str, max_keyword_overlap: int = 1) -> bool:
         """Check if a category is different enough from already selected ones."""
         keywords = self._extract_keywords(name)
 
         if not keywords:
             return True
 
-        # Strict check: if the primary keyword has been used twice already, reject
+        # Strict check: if the primary keyword has been used already, reject
         primary = self._get_primary_keyword(name)
-        if primary and self.used_keywords.get(primary, 0) >= 2:
+        if primary and self.used_keywords.get(primary, 0) >= 1:
             return False
 
         # Count how many times each keyword has been used
         overlap_count = sum(1 for kw in keywords if self.used_keywords.get(kw, 0) >= max_keyword_overlap)
 
-        # If more than 40% of keywords are overused, reject
-        if overlap_count > len(keywords) * 0.4:
+        # If more than 30% of keywords are overused, reject
+        if overlap_count > len(keywords) * 0.3:
             return False
 
         return True
@@ -514,6 +519,16 @@ class DiversityChecker:
 
 class GameGenerator:
     """Main class that orchestrates game generation."""
+
+    def __init__(self, cache_file: str, verbose: bool = False):
+        self.api = WikipediaAPI()
+        self.filter = CategoryFilter()
+        self.cache = CacheManager(cache_file)
+        self.html_gen = HTMLGenerator()
+        self.diversity = DiversityChecker()
+        self.verbose = verbose
+        # Track all words used across all categories to prevent duplicates
+        self.used_words: set[str] = set()
 
     # Seed categories - these tend to have good subcategories
     # Organized by domain to ensure diversity
@@ -676,18 +691,37 @@ class GameGenerator:
         "Coats of arms",
     ]
 
-    def __init__(self, cache_file: str, verbose: bool = False):
-        self.api = WikipediaAPI()
-        self.filter = CategoryFilter()
-        self.cache = CacheManager(cache_file)
-        self.html_gen = HTMLGenerator()
-        self.diversity = DiversityChecker()
-        self.verbose = verbose
-
     def log(self, msg: str):
         """Print message if verbose mode is on."""
         if self.verbose:
             print(msg)
+
+    def _try_add_cached_category(self, name: str, members: list[str], good_categories: dict) -> bool:
+        """Try to add a cached category, filtering out globally-used words."""
+        if not self.filter.is_name_acceptable(name):
+            return False
+
+        if not self.diversity.is_diverse_enough(name):
+            return False
+
+        # Filter out words already used in other categories
+        available = [m for m in members if m.lower() not in self.used_words]
+
+        # If cache doesn't have enough unique words, fetch more from Wikipedia
+        if len(available) < 45:
+            self.log(f"  Cache has only {len(available)} unique words for {name}, fetching more...")
+            return self._try_add_category(name, good_categories, skip_cache=True)
+
+        # Take 45 available words
+        selected = available[:45]
+        good_categories[name] = selected
+        self.diversity.add_category(name)
+
+        # Track these words globally
+        for word in selected:
+            self.used_words.add(word.lower())
+
+        return True
 
     def discover_categories(self, target_count: int = 45) -> dict[str, list[str]]:
         """Discover good categories from Wikipedia."""
@@ -699,32 +733,19 @@ class GameGenerator:
                            if len(v) >= 45 and self.filter.is_name_acceptable(k)}
         self.log(f"Found {len(available_cached)} categories in cache")
 
-        # If we have enough cached, select diverse subset
-        if len(available_cached) >= target_count:
-            # Shuffle and select with diversity checking
-            cached_keys = list(available_cached.keys())
-            random.shuffle(cached_keys)
+        # Shuffle cached categories for variety
+        cached_keys = list(available_cached.keys())
+        random.shuffle(cached_keys)
 
-            selected = []
-            for key in cached_keys:
-                if len(selected) >= target_count:
-                    break
-                if self.diversity.is_diverse_enough(key):
-                    selected.append(key)
-                    self.diversity.add_category(key)
+        # Try to add cached categories (with global duplicate checking)
+        for key in cached_keys:
+            if len(good_categories) >= target_count:
+                break
+            self._try_add_cached_category(key, available_cached[key], good_categories)
 
-            if len(selected) >= target_count:
-                return {k: available_cached[k][:45] for k in selected[:target_count]}
-
-            # Not enough diverse categories, add what we have and continue
-            for k in selected:
-                good_categories[k] = available_cached[k][:45]
-        else:
-            # Add all cached to our pool (with diversity)
-            for k, v in available_cached.items():
-                if self.diversity.is_diverse_enough(k):
-                    good_categories[k] = v[:45]
-                    self.diversity.add_category(k)
+        if len(good_categories) >= target_count:
+            # We have enough from cache
+            return dict(list(good_categories.items())[:target_count])
 
         # Explore seed categories to find more
         explored_seeds = set()
@@ -792,8 +813,8 @@ class GameGenerator:
 
         return good_categories
 
-    def _try_add_category(self, name: str, good_categories: dict) -> bool:
-        """Try to add a category if it passes all filters."""
+    def _try_add_category(self, name: str, good_categories: dict, skip_cache: bool = False) -> bool:
+        """Try to add a category if it passes all filters. Requires exactly 45 unique words."""
         # Check name first (fast)
         if not self.filter.is_name_acceptable(name):
             self.log(f"  - Rejected (name): {name}")
@@ -804,17 +825,24 @@ class GameGenerator:
             self.log(f"  - Rejected (too similar to existing): {name}")
             return False
 
-        # Check cache
-        cached_members = self.cache.get_category(name)
-        if cached_members:
-            if len(cached_members) >= 45:
-                good_categories[name] = cached_members[:45]
-                self.diversity.add_category(name)
-                return True
-            return False
+        # Check cache first (unless skip_cache is set)
+        if not skip_cache:
+            cached_members = self.cache.get_category(name)
+            if cached_members:
+                # Filter out words already used in other categories
+                available = [m for m in cached_members if m.lower() not in self.used_words]
+                if len(available) >= 45:
+                    selected = available[:45]
+                    good_categories[name] = selected
+                    self.diversity.add_category(name)
+                    for word in selected:
+                        self.used_words.add(word.lower())
+                    return True
+                # Cache doesn't have enough unique words, fall through to fetch more
+                self.log(f"  Cache has only {len(available)} unique words for {name}, fetching more...")
 
-        # Fetch more members than needed for better alphabet distribution
-        members = self.api.get_category_members(name, limit=200)
+        # Fetch more members than needed to account for duplicates
+        members = self.api.get_category_members(name, limit=300)
 
         if len(members) < 45:
             self.log(f"  - Rejected (too few: {len(members)}): {name}")
@@ -836,7 +864,116 @@ class GameGenerator:
             if clean_name and not self.filter.is_member_too_similar_to_category(clean_name, name):
                 cleaned.append(clean_name)
 
-        # Remove duplicates while preserving order
+        # Remove duplicates within category while preserving order
+        seen = set()
+        unique_cleaned = []
+        for m in cleaned:
+            m_lower = m.lower()
+            if m_lower not in seen and m:
+                seen.add(m_lower)
+                unique_cleaned.append(m)
+
+        # Filter out words already used in other categories (global duplicate check)
+        available = [m for m in unique_cleaned if m.lower() not in self.used_words]
+
+        if len(available) < 45:
+            self.log(f"  - Rejected (only {len(available)} unique words, need 45): {name}")
+            return False
+
+        # Select 45 members spread across the alphabet
+        selected = self.filter.select_alphabetically_spread(available, 45)
+
+        # Success! Cache and add
+        self.cache.add_category(name, selected)
+        good_categories[name] = selected
+        self.diversity.add_category(name)
+        # Track these words globally to prevent duplicates in other categories
+        for word in selected:
+            self.used_words.add(word.lower())
+        return True
+
+    def expand_cache(self, target_additional: int):
+        """Explore Wikipedia to add more categories to the cache."""
+        print(f"Expanding cache by finding {target_additional} new categories...")
+        print("(This may take several minutes)\n")
+
+        initial_count = len(self.cache.get_all_good_categories())
+        target_count = initial_count + target_additional
+
+        # Explore seed categories
+        explored_seeds = set()
+        seeds_to_explore = list(self.SEED_CATEGORIES)
+        random.shuffle(seeds_to_explore)
+
+        good_categories = {}  # Temporary dict for exploration
+        categories_found = 0
+
+        while categories_found < target_additional and seeds_to_explore:
+            seed = seeds_to_explore.pop(0)
+            if seed in explored_seeds:
+                continue
+            explored_seeds.add(seed)
+
+            print(f"[{categories_found}/{target_additional}] Exploring: {seed}")
+
+            # Get subcategories
+            subcats = self.api.get_subcategories(seed, limit=50)
+            random.shuffle(subcats)
+
+            for subcat in subcats:
+                if categories_found >= target_additional:
+                    break
+
+                if self.cache.is_rejected(subcat):
+                    continue
+
+                if self.cache.get_category(subcat):
+                    continue  # Already cached
+
+                # Try to add (without diversity checking - we want variety in cache)
+                if self._try_cache_category(subcat):
+                    print(f"  + Cached: {subcat}")
+                    categories_found += 1
+                else:
+                    self.cache.add_rejected(subcat)
+
+            # Add subcategories to explore later
+            for subcat in subcats[:10]:
+                if subcat not in explored_seeds:
+                    seeds_to_explore.append(subcat)
+
+        self.cache.save()
+        final_count = len(self.cache.get_all_good_categories())
+        print(f"\nCache expanded from {initial_count} to {final_count} categories (+{final_count - initial_count})")
+
+    def _try_cache_category(self, name: str) -> bool:
+        """Try to add a category to cache (without diversity checking)."""
+        if not self.filter.is_name_acceptable(name):
+            self.log(f"  - Rejected (name): {name}")
+            return False
+
+        members = self.api.get_category_members(name, limit=300)
+
+        if len(members) < 45:
+            self.log(f"  - Rejected (too few: {len(members)}): {name}")
+            return False
+
+        if len(members) > 500:
+            self.log(f"  - Rejected (too many: {len(members)}): {name}")
+            return False
+
+        if not self.filter.are_members_acceptable(members):
+            self.log(f"  - Rejected (member quality): {name}")
+            return False
+
+        # Clean member names
+        cleaned = []
+        for m in members:
+            clean_name = self.filter.clean_member_name(m)
+            if clean_name and not self.filter.is_member_too_similar_to_category(clean_name, name):
+                cleaned.append(clean_name)
+
+        # Remove duplicates
         seen = set()
         unique_cleaned = []
         for m in cleaned:
@@ -846,20 +983,17 @@ class GameGenerator:
                 unique_cleaned.append(m)
 
         if len(unique_cleaned) < 45:
-            self.log(f"  - Rejected (not enough unique after cleaning): {name}")
+            self.log(f"  - Rejected (not enough unique: {len(unique_cleaned)}): {name}")
             return False
 
-        # Select members spread across the alphabet
+        # Select 45 members
         selected = self.filter.select_alphabetically_spread(unique_cleaned, 45)
-
-        # Success! Cache and add
         self.cache.add_category(name, selected)
-        good_categories[name] = selected
-        self.diversity.add_category(name)
         return True
 
-    def generate_game(self, output_file: str):
+    def generate_game(self, output_file: str, seed: int = None):
         """Generate a complete game."""
+        self.seed = seed
         print("Discovering categories from Wikipedia...")
         print("(This may take a few minutes on first run)\n")
 
@@ -880,7 +1014,7 @@ class GameGenerator:
                 print(f"    Examples: {', '.join(members[:3])}...")
 
         # Generate HTML
-        self.html_gen.generate(categories, output_file)
+        self.html_gen.generate(categories, output_file, seed=self.seed)
         return True
 
 
@@ -899,26 +1033,51 @@ def main():
         help='Cache file for discovered categories (default: category_cache.json)'
     )
     parser.add_argument(
+        '-s', '--seed',
+        type=int,
+        default=None,
+        help='Random seed for reproducible generation (default: random)'
+    )
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='Show detailed progress'
     )
+    parser.add_argument(
+        '--expand-cache',
+        type=int,
+        default=0,
+        metavar='N',
+        help='Explore to find N additional categories for the cache (does not generate game)'
+    )
 
     args = parser.parse_args()
+
+    # Set random seed for reproducibility
+    if args.seed is None:
+        args.seed = random.randint(0, 2**31 - 1)
+    random.seed(args.seed)
+    print(f"Using random seed: {args.seed}")
 
     # Generate output filename if not specified
     if args.output is None:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
         args.output = f'game_{timestamp}.html'
 
+    # Generate game
+    generator = GameGenerator(args.cache, verbose=args.verbose)
+
+    # Handle --expand-cache mode
+    if args.expand_cache > 0:
+        generator.expand_cache(args.expand_cache)
+        return 0
+
     # Check template exists
     if not os.path.exists('2025.html'):
         print("Error: 2025.html template not found in current directory")
         return 1
 
-    # Generate game
-    generator = GameGenerator(args.cache, verbose=args.verbose)
-    success = generator.generate_game(args.output)
+    success = generator.generate_game(args.output, seed=args.seed)
 
     return 0 if success else 1
 
