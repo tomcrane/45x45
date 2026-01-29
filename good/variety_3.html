@@ -1,0 +1,608 @@
+
+<html>
+    <!-- Generated with seed: 547263895 -->
+    <!-- 2025 by Thomas Colthurst -->
+    <!-- Original at https://thomaswc.com/2025.html -->
+    <!-- Released under a Creative Commons Share Alike with Attribution License -->
+    <!-- See https://creativecommons.org/licenses/by-sa/4.0/ -->
+    <title>2025 - Wikipedia Edition</title>
+    <style>
+        body {
+  background-color: white; /* Or #fff or #ffffff */
+}
+
+.bigbut {
+width:100%; height:100%; display:block;
+}
+
+.shake {
+  animation: shake 0.5s;
+  animation-iteration-count: 1;
+}
+
+.numCirc {
+    border-radius: 70%;
+    background: white; /* #fff; */
+    border: 2px solid red; /* #666; */
+    color: red; /* #666; */
+    text-align: center;
+}
+
+.red {
+  color: red;
+}
+
+.floating {
+    position: fixed;
+    z-index: 999;
+    background-color: lightblue;
+}
+
+#fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+@keyframes shake {
+  0% { transform: translateX(1px) rotate(0deg); }
+  10% { transform: translateX(-1px) rotate(-1deg); }
+  20% { transform: translateX(-3px) rotate(1deg); }
+  30% { transform: translateX(3px) rotate(0deg); }
+  40% { transform: translateX(1px) rotate(1deg); }
+  50% { transform: translateX(-1px) rotate(-1deg); }
+  60% { transform: translateX(-3px) rotate(0deg); }
+  70% { transform: translateX(3px) rotate(-1deg); }
+  80% { transform: translateX(-1px) rotate(1deg); }
+  90% { transform: translateX(1px) rotate(0deg); }
+  100% { transform: translateX(1px) rotate(-1deg); }
+}
+    </style>
+    <body>
+        <canvas id="fireworks"></canvas>
+<div class="floating">
+   Make 45 groups of 45!  (By combining two at a time.) &nbsp;
+   Score: <span id="score">0</span> &nbsp; Mistakes: <span id="mistakes">0</span> &nbsp;
+    <button type="button" id="deselect" style="" disabled onclick="deselect()">Deselect</button>
+</div>
+<div style="padding-top: 16px; position: absolute" id="board"></div>
+
+    </body>
+        <script>
+        // Bugs: 
+        // 1) Unicode not rendering properly inside buttons on Chrome.
+        // Feature requests:
+        // 1) Don't penalize already guessed.
+        
+        // Globals
+        const M = 45;  // Board size
+            
+        var score = 0;
+        var mistakes = 0;
+        
+        var selected = 0;  // The currently selected button, if any.
+        
+        var wordlist = [];  // Actually, a list of (word, category) pairs
+    
+
+        // The categories.
+        
+        var cats = {};
+
+            // #1
+            cats["Jazz-influenced classical composers"] = ["Kurt Weill", "Milton Adolphus", "Alex North", "Don Banks", "Dominique Girod", "Larry Austin", "Francis Poulenc", "André Previn", "Butch Morris", "Margaret Bonds", "Richard Rodney Bennett", "Malcolm Arnold", "Igor Stravinsky", "Maurice Ravel", "Ferde Grofé", "Boris Blacher", "Laura Andel", "Yoriaki Matsudaira", "Edward W. Hardy", "Constant Lambert", "Wilhelm Grosz", "Dmitri Shostakovich", "Anthony Davis", "Friedrich Gulda", "Tale Ognenovski", "John Alden Carpenter", "George Antheil", "Jörg Widmann", "Darius Milhaud", "Gunther Schuller", "John Serry Sr.", "Alfred Bartles", "Givi Gachechiladze", "Leonard Bernstein", "Rolf Liebermann", "John Serry Jr.", "William Walton", "Mel Powell", "Leroy Anderson", "Takashi Kako", "Morton Gould", "John Williams", "Hans Werner Henze", "David Chesky", "Neil Slater"];
+
+            // #2
+            cats["Gemstones"] = ["Axinite", "Dioptase", "Spectrolite", "Serandite", "Rubellite", "Obsidian", "Azurmalachite", "Pezzottaite", "Chlorastrolite", "Petalite", "Morganite", "Stichtite", "Tourmaline", "Anorthite", "Axinite-", "Eosphorite", "Bytownite", "Sapphirine", "Elbaite", "Lapis armenus", "Jacinth", "Tinaksite", "Gabronite", "Petoskey stone", "Vesuvianite", "Nuummite", "Hyalophane", "Chrysocolla", "Unakite", "Saussurite", "Bayldonite", "Kornerupine", "Chiastolite", "Wavellite", "Zircon", "Xenotime", "Strontium titanate", "Marlborough gems", "Langgan", "Fluorapatite", "Stibiotantalite", "Amazonite", "Moldavite", "Hiddenite", "Turquoise"];
+
+            // #3
+            cats["Animal testing"] = ["Basel Declaration", "Specific-pathogen-free", "The People\'s Petition", "Cannulated cow", "Consumer demand tests", "Tail vein", "Effect of psychoactive drugs on animals", "Martin Seligman", "Chelates in animal nutrition", "Eclosion assay", "Model organism", "Toxicology testing", "Heterochronic parabiosis", "Rat Park", "Individually ventilated cage", "Remote control animal", "Concordat on Openness on Animal Research", "Animal Research Tomorrow", "Colin Blakemore", "Biomedical Primate Research Centre", "Animal efficacy rule", "Justice Department", "Karl Lashley", "Collagen-induced arthritis", "Central Institute for Experimental Animals", "ZebraBox", "National Centre for the Replacement, Refinement and Reduction of Animals in Research", "Directive 2010/63/EU", "Xenotransplantation", "Conflict procedure", "Randall–Selitto test", "Three Rs", "Parachuting animals", "ARRIVE guidelines", "Federation of European Laboratory Animal Science Associations", "Laboratory animal sources", "World Day for Laboratory Animals", "Louse-feeder", "Grimace scale", "Beagle Club radiation experiments", "Boyd Group", "Preference test", "Frankie Trull", "AAALAC International", "Freund\'s adjuvant"];
+
+            // #4
+            cats["Constellations"] = ["Canis Minor", "Cassiopeia", "Delphinus", "Manaiakalani", "Pegasus", "Gemini", "Corona Borealis", "Ara", "Taurus", "Centaurus", "Capricornus", "Carina", "Sagitta", "Puppis", "Aries", "Hydra", "Ke Kā o Makaliʻi", "Corona Australis", "Heiheionakeiki", "Nakshatra", "Lepus", "Lyra", "Decan", "Asterism", "Eridanus", "Hoshi Meguri no Uta", "Sagittarius", "Cepheus", "Cetus", "Leo Minor", "Auriga", "Cygnus", "Andromeda", "Corvus", "Ursa Major", "Boötes", "Vela", "Sea", "Zodiac", "Draco", "Celestial cartography", "Virgo", "Perseus", "Ophiuchus", "Pisces"];
+
+            // #5
+            cats["Films à clef"] = ["The Life Aquatic with Steve Zissou", "Kadakh", "Stillwater", "All That Jazz", "Compulsion", "Article 370", "The Devil Wears Prada", "Todo modo", "Queenie", "When the Sky Falls", "Dandupalya", "8 Mile", "The Adventurers", "Atlantic", "Talk Radio", "7/G Rainbow Colony", "Iruvar", "Valley of the Dolls", "My Favorite Year", "The Fabelmans", "The Greek Tycoon", "Network", "The Wave", "I\'m Not There", "Janmabhoomi", "Abdulla the Great", "Double Door", "Once Upon ay Time in Mumbai Dobaara!", "Raajadhani Files", "Living Venus", "Bloody Mama", "Heartburn", "Dreamgirls", "White Hunter Black Heart", "Siddham", "The Repenter", "The Carpetbaggers", "Fever Pitch", "Gully Boy", "Staying Alive", "All You Need Is Cash", "Eureka", "To Die of Love", "Rakta Charitra 2", "Primary Colors"];
+
+            // #6
+            cats["Effects units"] = ["Fuzz-wah", "Ray Butts EchoSonic", "Eventide H910 Harmonizer", "Re-amp", "Pro Co RAT", "Audio equalization", "Delay", "Moogerfooger", "Mu-Tron III", "Ibanez Tube Screamer", "Talk box", "500-series format", "DI unit", "DigiTech Whammy", "King of Tone", "Lexicon MX200", "MXR Distortion +", "Vibrato unit", "MXR Dyna Comp", "Tremolo", "Shin-ei Companion FY-2", "Dunlop Cry Baby", "EMT 140", "Leslie speaker", "Watkins Copicat", "Auto-wah", "Fairchild 660", "Boss HM-2", "Distortion", "Fuzz Face", "Z.Vex Fuzz Factory", "Boss SD-1", "1176 Peak Limiter", "Guitar pedalboard", "Octavia", "Roland Space Echo", "BeatBuddy", "Lexicon JamMan", "Boss DS-1", "The Gizmo", "Line 6 DL4", "EBow", "DigiTech JamMan", "Uni-Vibe", "Big Muff"];
+
+            // #7
+            cats["Birds of the United States"] = ["Sanderling", "Eastern phoebe", "Chuck-will\'s-widow", "Eastern screech owl", "Barn swallow", "Greater roadrunner", "Red-shouldered hawk", "Boat-tailed grackle", "Common grackle", "Pileated woodpecker", "Indigo bunting", "Brown-headed cowbird", "Seaside sparrow", "Lesser scaup", "Winter wren", "Least sandpiper", "Ruffed grouse", "Willow flycatcher", "Mottled duck", "American oystercatcher", "Golden eagle", "Blue-winged teal", "Pine siskin", "Ruddy turnstone", "Gray catbird", "Northern rough-winged swallow", "Osprey", "Jackie and Shadow", "Great blue heron", "Purple martin", "Eurasian collared dove", "Double-crested cormorant", "Turkey vulture", "Northern cardinal", "Hairy woodpecker", "Cedar waxwing", "Forster\'s tern", "Killdeer", "White-eyed vireo", "American coot", "United States Fish and Wildlife Service list of endangered mammals and birds", "Yellow-billed cuckoo", "Brown thrasher", "Carolina wren", "American white ibis"];
+
+            // #8
+            cats["Home appliances"] = ["Garbage disposal unit", "Humidifier", "Clothes dryer", "Smart refrigerator", "Thor washing machine", "Samsung T9000", "Water dispenser", "Appliance recycling", "Major appliance", "Futon dryer", "Trouser press", "Refrigerator", "Icebox", "Aroma lamp", "Air conditioning", "Ettridge Collection", "Sewing machine", "Washer-dryer", "FoldiMate", "Personal computer", "Electric shower", "Template:Lennox", "Dishwasher", "TrueCookPlus", "Air ioniser", "Kitchen hood", "Lighter", "Hair dryer", "Internet Digital DIOS", "Mousetrap", "Hair iron", "Fan heater", "Leaf blower", "Bachelor griller", "Toaster", "Moffat", "Dish drying cabinet", "Attic fan", "Small appliance", "Ceiling fan", "Lawn mower", "Vacuum cleaner", "Manual vacuum cleaner", "Clothes iron", "Domestic robot"];
+
+            // #9
+            cats["Asbestos"] = ["Kent", "Amphibole", "Tremolite", "Asbestine", "Keasbey and Mattison Company", "O-I Glass", "Libby, Montana", "Nellie Kershaw", "Cape plc", "Motley Rice", "Mustankallio water tower", "Bendix Corporation", "Irving Selikoff", "Anthophyllite", "Nancy Tait", "Killer Company", "Chrysotile", "Cummingtonite", "Grunerite", "Fibre cement", "Richard Scruggs", "John Shiers", "Linda Reinstein", "USG Corporation", "Actinolite", "Artex", "Alice – A Fight For Life", "Garlock Sealing Technologies", "Combustion Engineering", "Johns Manville", "Asbestiform", "Riebeckite", "Baron & Budd, P.C.", "Edward Merewether", "Lewis H. Brown", "Pleural thickening", "Federal-Mogul", "Eternit", "Mesothelioma", "Jack Watkins Reserve", "Kananian v. Lorillard Tobacco Company", "Ferruginous body", "Owens Corning", "Turner & Newall", "International Commission on Occupational Health"];
+
+            // #10
+            cats["Poetic devices"] = ["Tmesis", "End-stopping", "Syzygy", "Dropped line", "Epanodos", "Cynghanedd", "Persona poetry", "Burlesque metaphor", "Recusatio", "Allegory", "Triadic-line poetry", "Onomatopoeia", "Fitt", "Volta", "Colometry", "Enjambment", "Adnomination", "Ancient Indian rhetoric", "Synaeresis", "Enclosed rhyme", "Ferskeytt", "Blackout poetry", "narrative techniques", "Elision", "Improvisation", "kennings", "Epistrophe", "Found poetry", "Pruning poem", "Anastrophe", "kigo", "Diaeresis", "Spam poetry", "Assonance", "Correlative verse", "Substitution", "Alliterative verse", "Bob and wheel", "Anaphora", "Zeugma and syllepsis", "Alliteration", "Adynaton", "Masculine and feminine endings", "Kenning", "Literary consonance"];
+
+            // #11
+            cats["Names"] = ["Nickname", "Named set theory", "International nonproprietary name", "Title", "Causal theory of reference", "Nominative determinism", "Name-dropping", "True name", "Theophoric name", "Non-rigid designator", "Mohyeddin", "Short and long titles", "Alternative title", "Frege\'s puzzles", "Artwork title", "Empty name", "Names of Easter", "Tribal name", "Aptronym", "Namesake", "Personal name", "Yomi", "Pub names in Great Britain", "Code name", "Seriki", "Culinary name", "Olatoye", "Tomiwa", "Archetypal name", "United States Adopted Name", "Names of the days of the week", "Trade name", "Timileyin", "Singular term", "Names for the number 0 in English", "Names for the number 0", "Rose registration name", "Names of the American Civil War", "Olusanya", "Generic name", "Olasunkanmi", "Unique identifier", "Numeral", "Legal name", "Name calling"];
+
+            // #12
+            cats["Bread dishes"] = ["Bunny chow", "Roscas", "Potato filling", "Fairy bread", "Toast", "Gibanica", "Panada", "French toast", "Sandwich", "Paratha roll", "Dhebra", "Pigs in a blanket", "Shooter\'s sandwich", "Aish as-Saraya", "Spoonbread", "Beer from bread", "Fatoot samneh", "Cheese and bacon roll", "Scone", "Sausage bread", "Flammekueche", "Fit-fit", "Strata", "Finger bun", "Bread pakora", "Sandwich loaf", "Biscuits and gravy", "Kubdari", "Egg-coated bread", "Biscocho", "Egg in the basket", "Bread pudding", "Pizza bagel", "Cheesymite scroll", "Smörgåstårta", "Qurutob", "Pane fratau", "Acquasale", "Bread and butter pudding", "Bruschetta", "Stuffing", "Canapé", "Garlic bread", "Hagelslag", "Dakos"];
+
+            // #13
+            cats["Doughnuts"] = ["Vada", "Éclair", "Chin chin", "Fartura", "Imarti", "Bolinho de chuva", "Æbleskiver", "Oliebol", "Angel wings", "Sufganiyah", "Picarones", "Rosca", "Pestiños", "Pershing", "Shuangbaotai", "Merveille", "Boortsog", "Tulumba", "Nonnevot", "Jalebi", "Bağaça", "Gulgula", "Makhan Bada", "Gogoși", "Malassada", "Kitchener bun", "Lalanga", "Sel roti", "Klenät", "Donutgate", "Mekitsa", "Alkaki", "Shakoy", "Prusurate", "Zalabiyeh", "Sopaipilla", "Smultring", "Untir-untir", "Lokma", "Gulab jamun", "Sfinz", "Mandazi", "Fritelli", "Funkaso", "Spritzkuchen"];
+
+            // #14
+            cats["Hitch knots"] = ["Garda hitch", "Tensionless hitch", "Timber hitch", "Anchor bend", "Snell knot", "Lobster buoy hitch", "Marlinespike hitch", "Slippery hitch", "Ossel hitch", "Magnus hitch", "Knotless knot", "Clove hitch", "Cleat hitch", "Bale sling hitch", "Improved clinch knot", "Arbor knot", "Vibration-proof hitch", "Prusik", "Turn", "Tugboat hitch", "Turle knot", "Uni knot", "Falconer\'s knot", "Hoxton knot", "Boom hitch", "Hitching tie", "Double overhand noose", "Taut-line hitch", "Blake\'s hitch", "Blackwall hitch", "Cow hitch", "Radium release hitch", "Knute hitch", "Jamming knot", "Halter hitch", "Klemheist knot", "Pile hitch", "Barrel hitch", "Bachmann knot", "Swing hitch", "Highpoint hitch", "Sailor\'s hitch", "Highwayman\'s hitch", "Round turn and two half-hitches", "Tumble hitch"];
+
+            // #15
+            cats["International rivers of Asia"] = ["Atrek", "Selenga", "Hadera Stream", "Raidāk River", "Babai River", "Gandaki River", "Iori", "Zarafshon", "Khowai River", "Feni River", "Queiq", "Sekong river", "Barak River", "Ak-Suu", "Torasi Estuary", "Hari", "Srepok River", "Vakhsh", "Aras", "Çoruh", "Kamala River", "Ruak River", "Atrai River", "Kulik River", "Amur", "Debed", "Khalkhin Gol", "Uy", "West Rapti River", "Psou", "Bằng River", "Kushiyara River", "Mahananda River", "Nanxi River", "Euphrates", "Taping River", "Little Yenisei", "Jaldhaka River", "Mo Chhu", "Sirwan River", "Surma-Meghna River System", "Ok Tedi River", "Hantan River", "Cả River", "Yepak river"];
+
+            // #16
+            cats["Cheeses with designation of origin protected in the European Union"] = ["Toma cheese", "Xynomizithra", "Brocciu", "Casín cheese", "Palmero cheese", "Esrom", "Kanterkaas", "Herve cheese", "Stilton cheese", "Raschera", "Bleu du Vercors-Sassenage", "Rocamadour cheese", "Gamonéu cheese", "Limburger", "Castelmagno cheese", "Zamorano cheese", "São Jorge cheese", "Gorgonzola", "Manouri", "Caciocavallo", "Noord-Hollandse Gouda", "Afuega\'l pitu", "Pecorino siciliano", "Valdeón cheese", "Pecorino di Filiano", "Italian PDO cheeses", "Formai de Mut dell\'Alta Valle Brembana", "Bryndza Podhalańska", "Provolone", "Manchego", "Queijo de Nisa", "Cantabrian cream cheese", "Bra cheese", "Sura Kees", "Taleggio cheese", "Serra da Estrela cheese", "Buffalo mozzarella", "Svecia", "Pecorino romano", "Bonchester cheese", "Ossau-Iraty", "Dovedale cheese", "Wensleydale cheese", "Feta", "Salva"];
+
+            // #17
+            cats["Damsels in distress"] = ["Desperate Desmond", "Tiger Lily", "Steve Trevor", "Snow White", "Sonic the Hedgehog", "Planet Stories", "The Avowing of Arthur", "Tinker Bell", "Ariel", "Final girl", "Dragon Quest", "Conan the Barbarian", "Nezuko Kamado", "Along Came Jones", "Belle", "The Gallopin\' Gaucho", "Emprise de l\'Escu vert à la Dame Blanche", "Serial film", "Princess Peach", "The Dover Boys at Pimento University", "Gag", "Wendy Darling", "Meg", "The Perils of Penelope Pitstop", "Andromeda Chained to the Rocks", "Mysterious Island", "Hopalong Cassidy", "Pauline", "Jasmine", "Dizzy", "Mulholland Drive", "Knight-errant", "Styles and themes of Robert E. Howard", "Cheng Hsiao-mei", "Ryona", "Julius the Cat", "The Super Mario Bros. Super Show!", "Olive Oyl", "Mighty Mouse", "Anya", "Princess Daisy", "Chicks \'n Chained Males", "Rappaccini\'s Daughter", "The Exploits of Elaine", "Pocahontas"];
+
+            // #18
+            cats["Yeast breads"] = ["Obwarzanek krakowski", "Colston bun", "Vienna bread", "Guernsey Gâche", "Krotekake", "Bath bun", "Eish baladi", "Parker House roll", "Slow Bread", "Pan loaf", "Candeal bread", "Pandoro", "Brioche", "Double buddy", "Borodinsky bread", "Manchet", "English muffin", "Touton", "Kerststol", "Craquelin", "Pita", "Crumpet", "Buccellato di Lucca", "Piada dei morti", "Melonpan", "Buchteln", "Limpa", "Pan de siosa", "Waffle", "Plain loaf", "Focaccia", "Nokul", "Pogača", "Rum roll", "Monay", "Veneziana", "Bialy", "Japanese milk bread", "School bread", "Marraqueta", "Bazlama", "London bun", "Hard dough bread", "Anadama bread", "Michetta"];
+
+            // #19
+            cats["Musical instrument museums"] = ["The Gurkha Museum", "Museum of Somerset", "Museum of Wigan Life", "Herschel Museum of Astronomy", "Anne Dean Turk Performing Arts Center", "Barrel Organ Museum Haarlem", "Dean Castle", "Highclere Castle", "Chimei Museum", "Stringed Instruments Museum", "Museum of the Home", "Harmonium Art museuM", "Mr Sax\'s House", "Music Museum", "Ruskin Museum", "Holburne Museum", "Museum of Portuguese Music", "The Box, Plymouth", "Vleeshuis", "Russell-Cotes Art Gallery & Museum", "Peterborough Museum and Art Gallery", "Museum of Making Music", "Sainsbury Centre for Visual Arts", "Hunterian Museum and Art Gallery", "Royal Engineers Museum", "Grainger Museum", "Soldiers of Gloucestershire Museum", "Museu Nacional da Música", "Morpeth Chantry Bagpipe Museum", "Eboardmuseum", "Guitars – the Museum", "Glenesk Folk Museum", "Musical Instruments Museum, Brussels", "Science Museum, London", "College of Piping", "Staffordshire Regiment Museum", "Royal Conservatoire of Scotland", "Petrie Museum of Egyptian Archaeology", "Powell-Cotton Museum", "Museum of English Rural Life", "Royal Museums Greenwich", "McLean Museum", "King\'s Own Royal Regiment", "Metropolitan Museum of Art", "Royal Albert Memorial Museum"];
+
+            // #20
+            cats["Desserts"] = ["Bar cookie", "Sellou", "Dulce de batata", "Osmalieh", "The Oxford Companion to Sugar and Sweets", "Hatted kit", "Patay", "Crêpe", "Whipped cream", "Noodle kugel", "Chocolate", "Cake", "Koliva", "Duckanoo", "Khaliat nahl", "Snack cake", "Macedonia", "Layali lubnan", "Frangollo", "Syrniki", "Akpan", "Hojuela", "Milk toast", "Twisted doughnut", "Milhojas", "Makówki", "Confectionery", "Manjar blanco", "Aparon", "Shamishi", "Blue raspberry flavor", "Lemon bar", "Bolinhos de mandioca com mel", "Saftsuppe", "Cookie", "Haribo", "Natillas", "Cooking of apples", "Habichuelas con dulce", "Chinir saaj", "Yogurt", "Eid cuisine", "Afikoman", "Tusha shinni", "Snow cream"];
+
+            // #21
+            cats["Hypothetical astronomical objects"] = ["Isotropic beacon", "Antimatter comet", "Planets beyond Neptune", "Hubble bubble", "Dyson sphere", "Type Iax supernova", "Gaia Sausage", "Chiron", "Tabby\'s Star", "Multiverse", "Subsatellite", "Twin Earth thought experiment", "Hycean planet", "Neith", "Rings of Earth", "Shell collapsar", "Theia", "Coatlicue", "Saturn trojan", "Domain wall", "M32p", "Phaeton", "Micro black hole", "Planet V", "Tyche", "Quark-nova", "Galaxy X", "Claimed moons of Earth", "Cosmic string", "Dark galaxy", "Chrysalis", "Themis", "Fermi ball", "Exomoon", "Fifth planet", "Counter-Earth", "Hypothetical moon of Mercury", "Planet Nine", "Kraken galaxy", "Vulcanoid", "Five-planet Nice model", "Wormhole", "Fifth Giant", "Hyperbolic asteroid", "Dyson–Harrop satellite"];
+
+            // #22
+            cats["Point of view"] = ["Political views on the Macedonian language", "Latter Day Saint views on Mary", "Christian views on the classics", "Islamic views on piety", "Third-person limited narrative", "Jewish views on incest", "Ziran", "Criticism of patents", "Jewish views on suicide", "Christian views on cloning", "Religious views on capitalism", "Rick Santorum\'s views on homosexuality", "Israeli views on the peace process", "Feminist views on BDSM", "Narration", "First-person narrative", "Jewish views on contraception", "Jewish views on slavery", "Critical anthropomorphism", "Ahmadiyya views on evolution", "Christian views on sin", "Jewish views on sin", "Unreliable narrator", "Jewish views on Muhammad", "Hindu views on evolution", "Sigmund Freud\'s views on religion", "Standpoint theory", "Religious views on euthanasia", "Karl Barth\'s views on Mary", "Christian views on marriage", "Jewish views on evolution", "Palestinian views on the peace process", "Islamic views on slavery", "Islamic views on evolution", "Protestant views on contraception", "Medieval Christian views on Muhammad", "Buddhist views on sin", "Scientific consensus on climate change", "Feminist views on sexuality", "Sigmund Freud\'s views on homosexuality", "Religious views on same-sex marriage", "Religious views on love", "Point-of-view shot", "Religious views on suicide", "Protestant views on Mary"];
+
+            // #23
+            cats["Science fiction film characters"] = ["Wilma Deering", "Krrish", "Gertie Taylor", "Mechani-Kong", "King Caesar", "Jet Jaguar", "Moguera", "Megan Halsey", "Pod People", "Hellboy", "Edit", "Pan Pacific Defense Corps", "Onibaba", "Necromorphs", "Roy Batty", "Dr. Hämsterviel", "Commando Cody", "Gipsy Avenger", "Ed Traxler", "Anguirus", "George Taylor", "Hudson", "SpaceGodzilla", "Kerberos Saga characters", "Lori Quaid", "Biollante", "Snake Plissken", "King Kong", "Robby the Robot", "Claire Redfield", "Dr. Ishirō Serizawa", "Yuri Karpov", "Frank Dodd", "Miles Dyson", "Seth Brundle", "Jill Valentine", "Jumba Jookiba", "Adrian Helmsley", "Dr. Blair", "Destoroyah", "Vilos Cohaagen", "Biff Tannen", "Godzilla Junior", "The Duke of New York", "Fah Lo Suee"];
+
+            // #24
+            cats["Vitis"] = ["Vitis californica", "Vitis berlandieri", "Vitis fengqinensis", "Portuguese wine grape varieties", "Vitis chungii", "Vitis vulpina", "Ampelography", "Vitis rupestris", "Vitis arizonica", "Vitis hui", "Vitis menghaiensis", "Vitis ficifolia", "Vitis nesbittiana", "Vitis vinifera", "Vitis bryoniifolia", "Vitis popenoei", "Vitis mustangensis", "Vitis cinerea", "Vitis bellula", "Vitis xunyangensis", "Vitis balansana", "Vitis chunganensis", "Vitis retordii", "Vitis labrusca", "Vitis rotundifolia", "Vitis wuhanensis", "Vitis shuttleworthii", "Vitis yunnanensis", "Vitis tsoii", "Chasselas de Thomery", "Vitis acerifolia", "Vitis × champinii", "Vitis sinocinerea", "Vitis girdiana", "Vitis International Variety Catalogue", "Vitis riparia", "Vitis flexuosa", "Vitis palmata", "Vitis silvestrii", "Vitis betulifolia", "Vitis davidii", "Vitis mengziensis", "Vitis × labruscana", "Vitis ruyuanensis", "Vitis heyneana"];
+
+            // #25
+            cats["Tilting trains"] = ["E351 series", "DBAG Class 612", "381 series", "E5 and H5 Series Shinkansen", "JR Shikoku 2700 series", "E353 series", "Acela", "STAR21", "JR Shikoku 8000 series", "383 series", "ICE TD", "Pendulum car", "Electric Tilt Train", "300X", "Taroko Express", "Tilt Train", "FS Class ETR 470", "273 series", "Meitetsu 2000 series", "KiHa 283 series", "Acela Express", "X 2000", "KiHa 285 series", "N700S Series Shinkansen", "British Rail Class 390", "KiHa 261 series", "Cairns Tilt Train derailment", "Chizu Express HOT7000 series", "885 series", "883 series", "Advanced Passenger Train", "ICE T", "KiHa 281 series", "British Rail Class 221", "E6 Series Shinkansen", "DB Class 611", "8600 series", "JR Shikoku 2600 series", "ÖBB Class 4011", "Odakyu 50000 series VSE", "385 series", "Alfa Pendular", "China Railway TSD09", "UAC TurboTrain", "LRC"];
+
+            // #26
+            cats["Medicinal plants"] = ["Kopsia", "Chamomile", "Iris tenuifolia", "Iris tigridia", "Aristolochia", "Crataegus", "Gnetum", "Colchicum", "Galeopsis", "Galanthus", "Cytinus", "Ferula", "Leonurus cardiaca", "plants used in herbalism", "Liquorice", "Horseradish", "Cassytha", "Helicteres baruensis", "Gillenia", "Effects of legalized cannabis", "Jasminum grandiflorum", "Corydalis", "Calendula", "Angelica", "Camellia sinensis", "Dianthera pectoralis", "Amorphophallus konjac", "Elephantopus scaber", "Euphorbia", "Plant sources of anti-cancer agents", "Alliaria petiolata", "Artemisia kawakamii", "Lavandula dentata", "Aster ageratoides", "Crinum macowanii", "Juglans cinerea", "Bridelia stipularis", "Derris taiwaniana", "Callicarpa longifolia", "Crocus sativus", "Juncus effusus", "Lavandula pubescens", "Lathyrus sativus", "Aleurites moluccanus", "Kaempferia rotunda"];
+
+            // #27
+            cats["Visual albums"] = ["B\'Day Anthology Video Album", "Hurry Up Tomorrow", "Clancy", "Dirty Computer", "Simulation Theory", "Oddsac", "Sound & Fury", "Forbidden", "−", "Star-Crossed: The Film", "Something Beautiful", "Fire Fade", "Bully", "Moonwalker", "Blue", "Green to Gold", "If I Can\'t Have Love, I Want Power", "M3LL155X", "When I Get Home", "K–12", "Cry Baby", "Entergalactic", "Kin", "Straight Outta Oz", "Be Here Soon", "Beyoncé", "Blue Neighbourhood", "Wildest Dreams", "Palo Santo", "Double Dutchess", "A Girl Like Me: Letters to My Lovers", "Lemonade", "Linear", "How Big, How Blue, How Beautiful", "Brighter Days Ahead", "The Young Blood Chronicles", "Dreamland", "Blue Lips", "Circus Maximus", "Unapologetically", "Anima", "Runaway", "This Is Me... Now: A Love Story", "Interstella 5555: The 5tory of the 5ecret 5tar 5ystem", "Black Is King"];
+
+            // #28
+            cats["Industrial minerals"] = ["Graphite", "Rotten stone", "Slate", "Fuller\'s earth", "Perlite", "Natron", "Dimension stone", "Halite", "Alunite", "Tridymite", "Corundum", "Syenite", "Greystone", "Fluorite", "Pumice", "Ball clay", "Zeolite", "Nepheline", "Gneiss", "Diatomaceous earth", "Garnet", "Phosphate", "Szydłowiec sandstone", "Bentonite", "Limestone", "Brine", "Baryte", "Sulfur", "Quartz", "Dolomite", "Bluestone", "Asbestos Hazard Emergency Response Act", "Mica", "Olivine", "Novaculite", "Sandstone", "Mirabilite", "Vermiculite", "Metaborate", "Kaolinite", "Granite", "Feldspar", "Shale", "Andalusite", "Sillimanite"];
+
+            // #29
+            cats["Kaiju"] = ["Betterman", "Rooster Fighter", "Pandemic 2: The Startling", "Clover", "Monsterverse", "Ogre Tribe Org", "GAEA-TIMA the Gigantis", "Kishiryu Sentai Ryusoulger characters", "Reptar", "Dandadan", "Mecha-Streisand", "Big Man Japan", "G-Fest", "Shambling Towards Hiroshima", "Monsterpocalypse", "Gamera", "Pacific Rim", "Rhedosaurus", "Stay Puft Marshmallow Man", "Tokyo Storm Warning", "Angels", "Atomic Robo", "Dai-Guard", "Monster-Colored Island", "TIM Defender of the Earth", "Godzilla Singular Point", "Fredzilla", "Giant Phantom Monster Agon", "Machine Empire Baranoia", "Giant Ojō-sama", "Gorgo", "Japanese Giants", "Ogra", "Daimajin", "King Mondo", "Demon Lord Dante", "American Gothic Press", "Snowball Earth", "Yonggary", "Godzilla: The Series", "Bullbuster", "Ion", "Neon Genesis Evangelion", "Parallax", "Dinosaurs Attack!"];
+
+            // #30
+            cats["Keyboard instruments"] = ["Dolceola", "Claviola", "Archicembalo", "Walking Piano", "Chekker", "Clavier à lumières", "historical harpsichord makers", "Ondes Martenot", "Melodica in music", "Piganino", "Gazamba", "Electronic keyboard", "Dulce melos", "Orphéal", "Apollonicon", "Synthesizer", "Harmonichord", "Casio CTK 230", "Buxheim Organ Book", "John Purkis", "Memotron", "Keytar", "Yamaha DGX-620", "Magnus Harmonica Corporation", "Terpodion", "Fotdella", "Orchestron", "Seraphine", "Prophet VS", "Nord Piano", "Clavicymbalum", "Indian harmonium", "Lautenwerck", "Chamberlin", "Celestaphone", "Claviorgan", "Organ tablature", "Physharmonica", "Panharmonicon", "Russell Collection", "Virginals", "Pedal keyboard", "Keyboard glockenspiel", "Pump organ", "Clavichord"];
+
+            // #31
+            cats["Tropical fruit"] = ["Spondias mombin", "Durio graveolens", "Myrciaria alagoana", "Soursop", "Annona crassiflora", "Oenocarpus bacaba", "Triphasia trifolia", "Selenicereus undatus", "Melicoccus bijugatus", "Willughbeia edulis", "Plinia rivularis", "Plinia phitrantha", "Jackfruit", "Feijoa", "Myrcia attenuata", "Artocarpus altilis", "Breadfruit", "Spondias purpurea", "Alibertia patinoi", "Vasconcellea", "Palmyra fruit", "Myrciaria guaquiea", "Carambola", "Lannea microcarpa", "Nypa fruticans", "Morisonia speciosa", "Annona scleroderma", "Karuka", "Pixtle", "Myrcia floridissima", "Eugenia azeda", "Chrysobalanus icaco", "Mangifera caesia", "Rambutan", "Uvaria leichhardtii", "Myrciaria racemosa", "Garcinia warrenii", "Myrciaria vismeifolia", "Plinia oblongata", "Babaco", "Papaya", "Inga edulis", "Myrcia tetraphylla", "Solanum caripense", "Myrcia rupestris"];
+
+            // #32
+            cats["Knot theory"] = ["Alexander polynomial", "Three-twist knot", "Jones polynomial", "Chord diagram", "2-bridge knot", "Seifert surface", "Gauss notation", "Arithmetic topology", "Birman–Wenzl algebra", "The Knot Atlas", "Petal projection", "63 knot", "Dowker–Thistlethwaite notation", "Band sum", "Hard unknot", "Arnold invariants", "Loop representation in gauge theories and quantum gravity", "Kinoshita–Terasaka knot", "Milnor map", "Conway knot", "Eilenberg–Mazur swindle", "mathematical knots and links", "Whitehead link", "Knots Unravelled", "Vortex theory of the atom", "Tait conjectures", "Skein relation", "74 knot", "Clasper", "Figure-eight knot", "Peripheral subgroup", "Solomon\'s knot", "Stevedore knot", "Cinquefoil knot", "Unknot", "Cyclic surgery theorem", "Bracket polynomial", "Hyperbolic volume", "(−2,3,7) pretzel knot", "Knot energy", "Knot tabulation", "Quantum invariant", "Racks and quandles", "Knot thickness", "Trefoil knot"];
+
+            // #33
+            cats["Membranophones"] = ["Surdo", "Tamborim", "Damau", "Timbrel", "Bedon", "Shime-daiko", "History of timpani", "Shamel", "Kpanlogo", "Huehuetl", "Candombe drums", "Taraban", "Drum", "Uruttu chenda", "Qilaut", "Veekku chenda", "Shamanic music", "Jori", "Tassa", "Pandereta plenera", "Madal", "Pandero", "Foot drum", "Karyenda", "Tsuri-daiko", "Goombay", "Nogo", "Repinique", "Thavil", "Timbau", "Pat waing", "Drum kit", "Idakka", "Friction drum", "Feed-Drum", "Khin", "Zabumba", "Panchamukha vadyam", "Udukai", "Dunun", "Dauylpaz", "Mhadalem", "Dhak", "Timbales", "Hand drum"];
+
+            // #34
+            cats["Flag designers"] = ["Ueng Ming-yih", "Theodosia Okoh", "Ali bey Huseynzade", "Omar Faiek Shennib", "Louise Fluke", "Charles Robertson Maier", "Prithvi Narayan Shah", "Ida McNeil", "Paul Hadley", "Albert Hastings Markham", "Marcus Garvey", "Henri Pharaon", "Qaboos bin Said", "Malietoa Tanumafili II", "Newt Heisley", "Zeng Liansong", "Surayya Tyabji", "Betsy Ross", "George Stanley", "Joaquín Suárez", "Adolfo Chávez", "Jiří Louda", "Hussein, King of Hejaz", "Vajiravudh", "İsmet Güney", "Marcela Agoncillo", "Lu Haodong", "Abdullah Mohammed Al Maainah", "Jens Oliver Lisberg", "Emilio Aguinaldo", "Cora Slocomb di Brazza", "Robert Watt", "Mariana Bracetti", "René Chaloult", "Yadesa Bojia", "Mohamed Hamzah", "Francisco de Miranda", "Kyle Lockwood", "Susan Karike", "Solomon Talbot", "Décio Villares", "Gabriel Ellison", "William Porcher Miles", "Carlos Westendorp", "Jerônimo de Sousa Monteiro"];
+
+            // #35
+            cats["Idiophones"] = ["Ipu", "Karawasi", "Chengila", "Chime bar", "Mihbaj", "Angklung", "Song bells", "Bungkaka", "Afoxé", "Kurung-kurung", "Binayo", "Pidkova", "Kayamb", "Yu", "Loh tarang", "Ensaasi", "Thattai", "Chuk", "Ravanne", "Vibraslap", "Tamboo bamboo", "Palmas", "Tambourine pedal", "Waterphone", "Flex-a-tone", "Cajón de rumba", "Treshchotka", "Song loan", "Chocalho", "Kirikoketa", "Tuned bottles", "Kalatalo", "Shaker", "Onugadu", "Flexatone", "Kei", "Dance Chimes", "Taal", "Herrena and ttakuna", "Trīdeksnis", "Zatula", "Ugly stick", "Caxirola", "Jhyamta", "Guitarra de canya"];
+
+            // #36
+            cats["Music videos"] = ["MTV 500", "Barack Obama vs. Mitt Romney", "Cover dance", "Cloudbusting", "The Little Lost Child", "Born This Way", "International Standard Recording Code", "Cinebox", "The Truth About De-Evolution", "Stop the Madness", "HBTV", "Clamp in Wonderland", "Buzz Bin", "Epic Rap Battles of History episodes", "UK Video Charts", "Why I Hate School but Love Education", "Music For One Apartment And Six Drummers", "Scopitone", "Short films by Studio Ghibli", "The Singing Brakeman", "El Hielo", "You Are the One", "Vingle", "The Fantastic All-Electric Music Movie", "Yakety Yak, Take It Back", "Crying for the Carolines", "I Will Not Let an Exam Result Decide My Fate", "Sugar", "IDGAF (Dua Lipa song)", "Panoram", "Drill Your Own Hole", "2 hands", "Jizz in My Pants", "Color-Sonic", "The Now Explosion", "Purple Eyes in the Dark", "Marryoke", "A Herb Alpert and the Tijuana Brass Double Feature", "Sí Se Puede Cambiar", "Snader Telescriptions", "Symphony of Science", "Rubber Johnny", "Kendall Ross Bean: Chopin Polonaise in A Flat", "Illustrated song", "MuchFACT"];
+
+            // #37
+            cats["Plot (narrative)"] = ["Subplot", "Types of fiction with multiple endings", "Mistaken identity", "Deus ex machina", "Fabel", "Hyleme", "Chekhov\'s gun", "Narrative hook", "Dramatistic pentad", "Climax", "Cliffhanger", "Eavesdropping", "Happy ending", "Story within a story", "Plot hole", "MacGuffin", "Story arc", "Plot twist", "Roman à tiroirs", "Reveal", "Backstory", "Imitation", "Self-fulfilling prophecy", "Babies switched at birth", "Sexual tension", "Lexis", "Plot device", "Frame story", "Scene", "story structures", "Deathtrap", "Mimesis", "Scene and sequel", "Dionysian imitatio", "Episodic storytelling", "Anagnorisis", "Screenwriting", "Red herring", "Vignette", "Flashback", "Quest", "Formula fiction", "Poetics", "Peripeteia", "Reverse chronology"];
+
+            // #38
+            cats["Punctuation"] = ["At sign", "Serial comma", "Right single quotation mark", "Semicolon", "Full stop", "Inverted nun", "Asterisk", "Section sign", "Dash", "Yig mgo", "Pallawa", "Tie", "Apostrophe Society", "Sentence spacing", "Hyphen", "Pilcrow", "Vertical bar", "Soft hyphen", "Bullet", "Underscore", "Quotation mark", "End mark", "Hypodiastole", "Wave dash", "Pipe character", "Triple parentheses", "Trademark symbol", "Paragraphos", "Meteg", "Dagger", "Comma", "Overline", "Gershayim", "Interrobang", "Double hyphen", "Diple", "Sentence clause structure", "Coronis", "Leiden Conventions", "Kai", "Danda", "Word divider", "Ampersand", "Geresh", "Question mark"];
+
+            // #39
+            cats["Tools"] = ["Upholstery regulator", "Air line", "Tracing wheel", "Wells light", "Helping hand", "Photochemical action plots", "Shell tools in the Philippines", "Come-along", "Top", "Time pressure gauge", "Sand box", "Spin disk", "Fire iron", "Instrumentum domesticum", "Shoulder dolly", "Fixture", "Glass breaker", "Shadow board", "Heat torch", "Ksar Akil flake", "Wrecking ball", "Plumett AL-52", "Butane torch", "Melting tank", "Wireline", "Flat spline", "Concrete float", "Storey pole", "Rotary transfer machine", "Clipboard", "Loggerhead", "Household hardware", "Vogelheimer Klinge", "Growler", "Electrochemical cell", "Drill", "Polissoir", "Fidget toy", "Wire brush", "Carrick Hill", "Jim crow", "Wheel chock", "Nano-suction technology", "Gang box", "College Navigator"];
+
+            // #40
+            cats["Mammals of Sub-Saharan Africa"] = ["African leopard", "African manatee", "Common slender mongoose", "African buffalo", "Harnessed bushbuck", "Oribi", "Zulu serotine", "African brush-tailed porcupine", "Swamp musk shrew", "African palm civet", "Lion", "Cape porcupine", "King genet", "Spotted hyena", "Helogale", "Stuhlmann\'s golden mole", "African wild dog", "Schreber\'s yellow bat", "Marsh mongoose", "Common duiker", "Striped polecat", "Lechwe", "Erythrocebus", "Banded mongoose", "Bohor reedbuck", "African forest buffalo", "African elephant", "Water chevrotain", "Four-toed hedgehog", "Side-striped jackal", "Black rhinoceros", "Serval", "Praomys", "European fallow deer", "Olive baboon", "Common dwarf mongoose", "Phataginus", "Spotted-necked otter", "White-bellied yellow bat", "Procavia", "Baboon", "Smutsia", "African clawless otter", "Rusty-spotted genet", "Common warthog"];
+
+            // #41
+            cats["Roll-and-move board games"] = ["Cluedo: Discover the Secrets", "Orient Express", "Monopoly", "Loaded Questions", "Blue Marble Game", "Hey Pa! There\'s a Goat on the Roof", "Easy Money", "Blacks & Whites", "Pictionary", "Snakes and ladders", "Trouble", "The Mansion of Happiness", "Frag", "Mall Madness", "Rave", "Mouse Trap", "Running-fight game", "Bookchase", "Destination", "Headache", "The Grape Escape", "Escape from Colditz", "Forbidden Bridge", "The Great Train Robbery", "Klondike", "Flibbix", "Candy Land", "Trump: The Game", "Monopoly: The Mega Edition", "Park and Shop", "The Game of Cootie", "Go to the Head of the Class", "Brain Chain", "Travellers\' Tour Through the United States", "Jinsei Game", "Don\'t Drop the Soap", "The Game of Life", "Trivial Pursuit", "Cluedo", "Wide World", "Coppit", "Hyena chase", "The Farming Game", "Game of the Goose", "Zohn Ahl"];
+
+            // #42
+            cats["Montane ecology"] = ["Climate of Peru", "Altitudinal zonation", "Subglacial stream", "Syngenetic permafrost growth", "Krummholz", "Scree", "Quechua", "Tierra fría", "Tierra templada", "Tibetan Plateau", "Alpine storms", "Suni", "Alpine plant", "Yukon Ice Patches", "Montane ecosystem", "Montane grasslands and shrublands", "Retreat of glaciers since 1850", "Permafrost", "Alpine climate", "Tree line", "Rupa-Rupa", "Páramo", "Continental divide", "Ridge", "Yungas", "Altiplano", "Life zones of central Europe", "Firn", "Snow line", "Hill people", "Life zones of the Mediterranean region", "Fir wave", "Couloir", "Life zones of Peru", "Glacial stream", "Mountain pass", "Glacier", "International Centre for Integrated Mountain Development", "Fellfield", "Penalpine", "Nilgiri Biosphere Reserve", "Ecology of the North Cascades", "Freezing level", "life zones by region", "Tierra helada"];
+
+            // #43
+            cats["Deal with the Devil"] = ["John Fian", "Errementari", "Deal of a Lifetime", "That Hell-Bound Train", "Delphine LaLaurie", "To the Devil — a Diva!", "Devil\'s Feud Cake", "Sæmundr fróði", "Lissi und der wilde Kaiser", "Niccolò Paganini", "Little Johnny Sheep-Dung", "Master Mahan", "William Lewis", "Tommy Johnson", "Faust", "Christoph Haizmann", "Elizabeth Báthory", "Candy Cane Lane", "Bearskin", "Pan Twardowski", "Simon Magus", "Giuseppe Tartini", "The Tailor Who Sold His Soul to the Devil", "Guacamelee!", "Philippe Musard", "Drak", "The Peasant and the Devil", "Moirang Shayon", "El hombre y el monstruo", "Jonathan Moulton", "The Smith and the Devil", "Mephistopheles", "Johann Georg Faust", "The Girl Without Hands", "Urbain Grandier", "Robert Johnson", "The Devil and Daniel Webster", "Henjunaha and Lairoulembi", "The Last Faust", "Falling Angel", "Even Though I Knew the End", "Poor Unfortunate Souls", "Kyubey", "Devil and the Bluebird", "François Prelati"];
+
+            // #44
+            cats["Flatbreads"] = ["Injera", "Sangak", "Chapati", "Msemmen", "Kappa pappadam", "Jolada rotti", "Tunnbröd", "Khubz", "Puri", "Lahoh", "Shotis puri", "Maluj", "Proziaki", "Christmas wafer", "Lavash", "Laufabrauð", "Taboon bread", "Etli ekmek", "Paratha", "Casabe", "Barbari bread", "Pinsa", "Flatbrød", "Hoggan", "Ṣa", "Sanchuisanda", "Roti", "Balep korkun", "Torta", "Arepa", "Pletzel", "Roti canai", "Pane carasau", "Phitti", "Finnish bread", "Shaobing", "Ngome", "Bammy", "Tortilla", "Wagafi bread", "Papadam", "Pizza bianca", "Bakarkhani", "Qatlama", "Luchi"];
+
+            // #45
+            cats["Telescopes"] = ["PLate OPtimizer", "Ohana project", "Astrograph", "Spin casting", "Periscope lens", "Optical Gravitational Lensing Experiment", "Adaptive optics", "Equatorial platform", "Keyhole problem", "Astroscan", "Dark Energy Spectroscopic Instrument", "Aragoscope", "Coudé Spectrograph", "RTT-150", "Multi-conjugate Adaptive optics Demonstrator", "Eyepiece", "HATNet Project", "Slooh", "Narrabri Stellar Intensity Interferometer", "Ronchi test", "Las Cumbres Observatory", "Altazimuth mount", "First light", "Equatorial mount", "SkyMapper", "Automated Planet Finder", "Unistellar", "Next-Generation Transit Survey", "Cophasing", "Image-forming optical system", "Dorpat Great Refractor", "Multicolor Active Galactic Nuclei Monitoring", "Schiefspiegler", "Carey mask", "GoTo", "Chabot Space and Science Center", "Intensity interferometer", "Secondary mirror", "Tpoint", "Purple Crow Lidar", "Hyeronymus Sirturus", "Rotating furnace", "Birmingham Solar Oscillations Network", "Copyscope", "Zoom lens"];
+
+
+            // Functions
+            
+            function deselect() {
+              if (selected != 0) {
+                selected.style = "";
+                selected = 0;
+                document.getElementById("deselect").disabled = true;
+              }
+            }
+            
+            function stringToLightColor(str) {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+              }
+
+              const h = Math.abs(hash) % 360;
+              const s = 70;
+              const l = 80 + (Math.abs(hash) % 10); 
+
+              const lDev = l / 100;
+              const a = (s * Math.min(lDev, 1 - lDev)) / 100;
+  
+              const f = (n) => {
+                const k = (n + h / 30) % 12;
+                const color = lDev - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, "0");
+              };
+
+              return `#${f(0)}${f(8)}${f(4)}`;
+            }
+            
+            function getRandomHexColor() {
+              return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+            
+            function finishCategory(b) {
+              b.innerHTML  =  '<b>' + b.category + '</b>';
+              b.disabled = true;
+              b.style.background= stringToLightColor(b.category);
+            }
+            
+            function checkCategories() {
+              const wordDict = new Map();
+              // Check that each category has 45 entries.
+              for (const [key, value] of Object.entries(cats)) {
+                if (value.length < 45) {
+                  alert(`Entry for ${key} has length ${value.length}`);
+                }
+                for (let i = 0; i < 45; i++) {
+                  wordlist.push([value[i], key]);
+                  if (wordDict.has(value[i])) {
+                      alert(`Duplicate word ${value[i]}`);
+                  }
+                  else {
+                      wordDict.set(value[i], true);
+                  }
+                }
+              }
+            }
+            
+            function shuffleArray(array) {
+              for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+              }
+            }
+            
+            function saveState() {
+                localStorage.clear();
+                
+                localStorage.setItem('score', score + '');
+                localStorage.setItem('mistakes', mistakes + '');
+                
+                var t = document.getElementById('the_table');
+                for (let i = 0; i < t.rows.length; i++) {
+                  let row = t.rows[i];
+                  for (let j = 0; j < row.cells.length; j++) {
+                    let cell = row.cells[j];
+                    let button = cell.firstChild;
+                    localStorage.setItem(`${i}_${j}_category`, button.category);
+                    localStorage.setItem(`${i}_${j}_cluster`, JSON.stringify(button.cluster));
+                    localStorage.setItem(`${i}_${j}_innerHTML`, button.innerHTML);
+                    localStorage.setItem(`${i}_${j}_title`, button.title);
+                  }
+                }
+                
+            }
+            
+            function putWordsInBoard() {
+              shuffleArray(wordlist);
+              var currentWordIndex = 0;
+              var table = document.getElementById("the_table");
+              for (let i = 0, row; row = table.rows[i]; i++) {
+                for (let j = 0, col; col = row.cells[j]; j++) {
+                  var button = col.firstElementChild;
+                  // button.pos = currentWordIndex;
+                  button.textContent = wordlist[currentWordIndex][0];
+                  button.category = wordlist[currentWordIndex][1];
+                  button.cluster = [button.textContent];
+                  currentWordIndex += 1;
+                }
+              }
+            }
+            
+            function startFireworks() {
+              const canvas = document.getElementById('fireworks');
+              const ctx = canvas.getContext('2d');
+              let w, h;
+              let particles = [];
+              let fireworks = [];
+
+              function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+              }
+              window.addEventListener('resize', resize);
+              resize();
+
+              class Firework {
+                constructor() {
+                    this.x = Math.random() * w;
+                    this.y = h;
+                    this.tx = Math.random() * w;
+                    this.ty = Math.random() * (h / 2);
+                    this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                    this.speed = 2 + Math.random() * 2;
+                    this.angle = Math.atan2(this.ty - this.y, this.tx - this.x);
+                    this.vx = Math.cos(this.angle) * this.speed;
+                    this.vy = Math.sin(this.angle) * this.speed;
+                    this.exploded = false;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.vy < 0 && this.y < this.ty) {
+                        this.explode();
+                    } else if (this.vy > 0 && this.y > this.ty) { // Should technically not happen with simple upward movement
+                         this.explode();
+                    }
+                }
+
+                explode() {
+                    this.exploded = true;
+                    for (let i = 0; i < 50; i++) {
+                        particles.push(new Particle(this.x, this.y, this.color));
+                    }
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                }
+              }
+
+              class Particle {
+                constructor(x, y, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.color = color;
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 3;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                    this.alpha = 1;
+                    this.decay = Math.random() * 0.015 + 0.005;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += 0.05; // gravity
+                    this.alpha -= this.decay;
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.alpha;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.restore();
+                }
+              }
+
+              function loop() {
+                // Clear with a trail effect
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; 
+                ctx.fillRect(0, 0, w, h);
+                ctx.globalCompositeOperation = 'lighter';
+
+                // Launch new firework randomly
+                if (Math.random() < 0.05) {
+                    fireworks.push(new Firework());
+                }
+
+                // Update and draw fireworks
+                for (let i = fireworks.length - 1; i >= 0; i--) {
+                    fireworks[i].update();
+                    fireworks[i].draw();
+                    if (fireworks[i].exploded) {
+                        fireworks.splice(i, 1);
+                    }
+                }
+
+                // Update and draw particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                    particles[i].draw();
+                    if (particles[i].alpha <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+
+                requestAnimationFrame(loop);
+              }
+
+              loop();
+            }
+            
+            function setUpBoard() {
+              // Just sets up the dom elements; does not put words in them.
+              var b = document.getElementById("board");   
+              const table = document.createElement('table');
+              table.id = 'the_table';
+              for (let i = 0; i < M; i++) {
+                const tr = document.createElement('tr');
+                tr.classList.add('.row');
+                for (let j = 0; j < M; j++) {
+                   const td = document.createElement('td');
+                   td.class = "bigbut";
+                   const button = document.createElement('button');
+                   button.class = "bigbut"
+                   button.onclick = function() {
+                       if (selected == button) {
+                         deselect();
+                         return;
+                       }
+                       button.style = "filter: invert(100%)";
+                       
+                       if (selected == 0) {
+                           selected = button;
+                           document.getElementById("deselect").disabled = false;
+                           return;
+                       }
+                       
+                       document.getElementById("deselect").disabled = true;
+
+                       if (button.category == selected.category) {
+                         
+                         firstbut = button;
+                         secondbut = selected;
+                         
+                         // Deselect
+                         selected.style = "";
+                         button.style = "";
+                         selected = 0;
+                         score = score + 1;
+                         
+                         // Merge
+                         firstbut.cluster = firstbut.cluster.concat(secondbut.cluster);
+                         // console.log(firstbut.cluster);
+                         if (firstbut.cluster.length == 2) {
+                           firstbut.innerHTML = '<b>' + firstbut.cluster.join('; ') + '</b>';
+                         } else {
+                           firstbut.innerHTML = '<b>' + firstbut.cluster.slice(0, 2).join(', ') + ', ... <span class="red">[' + firstbut.cluster.length + ']</span></b>';
+                           firstbut.title = firstbut.cluster.join('\n');
+                         }
+                         if (firstbut.cluster.length == 45) {
+                             finishCategory(firstbut);
+                         }
+                         
+                         document.getElementById("score").textContent = score;
+                         // Remove the button for the eliminated word.
+                         secondbut.title = '';
+                         // if (currentWordIndex < wordlist.length) {
+                         //  secondbut.textContent = wordlist[currentWordIndex][0];
+                         //  secondbut.category = wordlist[currentWordIndex][1];
+                         // secondbut.cluster = [secondbut.textContent];
+                         //  currentWordIndex += 1;
+                         // } else {
+                             secondbut.textContent = '';
+                             secondbut.disabled = true;
+                             
+                             // Remove not just the button but the entire <td>.
+                             secondbut.parentElement.remove();
+                        // }
+                         
+                       } else {
+                         mistakes = mistakes + 1;
+                         document.getElementById("mistakes").textContent = mistakes;
+                         // Shake it
+                         button.classList.add('shake');
+                         selected.classList.add('shake');
+                         
+                         button.addEventListener('animationend', () => {
+                           button.classList.remove('shake');
+                           button.style = "";
+                         }, { once: true });
+  
+                         old_selected = selected;
+                         old_selected.addEventListener('animationend', () => {
+                           old_selected.classList.remove('shake');
+                           old_selected.style = "";
+                         }, { once: true });
+  
+                         selected = 0;
+                       }
+                       saveState();
+                       if (score == 1980) {
+                           window.alert("You win!!");
+                           startFireworks();
+                       }
+                   };
+                   td.appendChild(button);
+                   tr.appendChild(td);
+                }
+                table.appendChild(tr);
+              }
+              
+              document.getElementById("board").appendChild(table);
+            }
+            
+            function loadState() {
+                s = localStorage.getItem('score');
+                if (s == null) {
+                    putWordsInBoard();
+                    return;
+                }
+                score = Number(s);
+                document.getElementById("score").textContent = score;
+                
+                s = localStorage.getItem('mistakes');
+                if (s == null) {
+                    putWordsInBoard();
+                    return;
+                }
+                mistakes = Number(s);
+                document.getElementById("mistakes").textContent = mistakes;
+                
+                var currentWordIndex = 0;
+                var table = document.getElementById("the_table");
+                var cells_to_remove = [];
+                for (let i = 0, row; row = table.rows[i]; i++) {
+                  for (let j = 0, col; col = row.cells[j]; j++) {
+                    var button = col.firstElementChild;
+                    // button.pos = currentWordIndex;
+                    button.category = localStorage.getItem(`${i}_${j}_category`);
+                    button.cluster = JSON.parse(localStorage.getItem(`${i}_${j}_cluster`));
+                    if (Array.isArray(button.cluster) && button.cluster.length == 45) {
+                        finishCategory(button);
+                    }
+                    button.innerHTML = localStorage.getItem(`${i}_${j}_innerHTML`);
+                    button.title = localStorage.getItem(`${i}_${j}_title`);
+                    currentWordIndex += 1;
+                    if (button.innerHTML == '') {
+                        // No word here, remove the whole <td>
+                        cells_to_remove.push(col);
+                    }
+                  }
+                }
+                for (let i = 0; i < cells_to_remove.length; i++) {
+                    cells_to_remove[i].remove();
+                }
+            }
+            
+            checkCategories();
+            setUpBoard();
+            loadState();
+        </script>
+
+</html>
